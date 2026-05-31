@@ -21,7 +21,7 @@ async function main() {
     throw new Error("Set ROOM_ADDRESS to a valid FantasyMatchRoom contract address.");
   }
 
-  const room = await ethers.getContractAt("FantasyMatchRoom", roomAddress);
+  const room = (await ethers.getContractAt("FantasyMatchRoom", roomAddress)) as any;
   const creatorAddress = (await room.creator()).toLowerCase();
   const signers = await ethers.getSigners();
   const creatorSigner = signers.find((signer) => signer.address.toLowerCase() === creatorAddress);
@@ -30,7 +30,7 @@ async function main() {
     throw new Error(`Creator signer ${creatorAddress} is not available in this local node.`);
   }
 
-  const roomAsCreator = room.connect(creatorSigner);
+  const roomAsCreator = room.connect(creatorSigner) as any;
   const participants: string[] = await room.getParticipants();
 
   if (participants.length === 0) {
