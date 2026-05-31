@@ -1,14 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Player } from "@proofplay/shared";
 import { isAddress, parseEther, type Address } from "viem";
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import { contractAddresses, fantasyMatchRoomAbi, hasConfiguredAddress, ZERO_ADDRESS } from "@/lib/contracts";
+import {
+  contractAddresses,
+  fantasyMatchRoomAbi,
+  hasConfiguredAddress,
+  LAST_ROOM_ADDRESS_STORAGE_KEY,
+  ZERO_ADDRESS
+} from "@/lib/contracts";
 
 type RoomActionsProps = {
   entryFee: string;
   players: Player[];
+  initialRoomAddress?: string;
 };
 
 function normalizeAddress(value: string): Address {
@@ -19,10 +26,16 @@ function normalizeAddress(value: string): Address {
   return ZERO_ADDRESS;
 }
 
-export function RoomActions({ entryFee, players }: RoomActionsProps) {
+export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActionsProps) {
   const { isConnected } = useAccount();
 
-  const [roomAddressInput, setRoomAddressInput] = useState<string>(contractAddresses.room);
+  const [roomAddressInput, setRoomAddressInput] = useState<string>(() => {
+    if (initialRoomAddress && isAddress(initialRoomAddress)) {
+      return initialRoomAddress;
+    }
+
+    return contractAddresses.room;
+  });
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<number[]>([]);
   const [captainId, setCaptainId] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
@@ -32,6 +45,26 @@ export function RoomActions({ entryFee, players }: RoomActionsProps) {
 
   const submitMutation = useWriteContract();
   const submitReceipt = useWaitForTransactionReceipt({ hash: submitMutation.data });
+
+  useEffect(() => {
+    if (initialRoomAddress && isAddress(initialRoomAddress)) {
+      setRoomAddressInput(initialRoomAddress);
+      window.localStorage.setItem(LAST_ROOM_ADDRESS_STORAGE_KEY, initialRoomAddress);
+      return;
+    }
+
+    const savedAddress = window.localStorage.getItem(LAST_ROOM_ADDRESS_STORAGE_KEY);
+
+    if (savedAddress && isAddress(savedAddress)) {
+      setRoomAddressInput(savedAddress);
+    }
+  }, [initialRoomAddress]);
+
+  useEffect(() => {
+    if (isAddress(roomAddressInput)) {
+      window.localStorage.setItem(LAST_ROOM_ADDRESS_STORAGE_KEY, roomAddressInput);
+    }
+  }, [roomAddressInput]);
 
   const roomAddress = useMemo(() => normalizeAddress(roomAddressInput), [roomAddressInput]);
   const roomConfigured = hasConfiguredAddress(roomAddress);
