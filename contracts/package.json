@@ -5,6 +5,7 @@
   "scripts": {
     "build": "hardhat compile",
     "deploy:local": "hardhat run scripts/deploy.ts",
+    "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost",
     "deploy:somnia": "hardhat run scripts/deploy.ts --network somnia",
     "smoke:local": "hardhat run scripts/smoke-local.ts --network localhost",
     "seed:local": "hardhat run scripts/seed-demo-players.ts --network localhost",
