@@ -108,6 +108,9 @@ export default async function RoomDetailsPage({ params }: RoomPageProps) {
         <Link className="btn ghost" href={`/rooms/${resolvedRoom.id}/results`}>
           View Results Page
         </Link>
+        <Link className="btn" href={`/rooms/${resolvedRoom.id}/settle`}>
+          Creator Settle Helper
+        </Link>
       </div>
     </section>
   );
