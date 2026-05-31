@@ -1,14 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { keccak256, parseEther, toBytes } from "viem";
-import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { isAddress, keccak256, parseEther, toBytes, type Address } from "viem";
+import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { WalletButton } from "@/components/WalletButton";
-import { contractAddresses, hasConfiguredAddress, matchRoomFactoryAbi } from "@/lib/contracts";
+import {
+  contractAddresses,
+  hasConfiguredAddress,
+  LAST_ROOM_ADDRESS_STORAGE_KEY,
+  matchRoomFactoryAbi
+} from "@/lib/contracts";
 import { demoMatches } from "@/lib/demo-data";
 
 export default function CreateRoomPage() {
   const { isConnected } = useAccount();
+  const publicClient = usePublicClient();
   const writeContract = useWriteContract();
   const txHash = writeContract.data;
 
@@ -21,6 +28,8 @@ export default function CreateRoomPage() {
   const [maxParticipants, setMaxParticipants] = useState("10");
   const [deadline, setDeadline] = useState("2026-05-27T18:30");
   const [formError, setFormError] = useState<string | null>(null);
+  const [latestRoomAddress, setLatestRoomAddress] = useState<Address | null>(null);
+  const [latestRoomLookupError, setLatestRoomLookupError] = useState<string | null>(null);
 
   const selectedMatch = useMemo(
     () => demoMatches.find((match) => match.id === matchId) ?? demoMatches[0],
@@ -29,6 +38,56 @@ export default function CreateRoomPage() {
 
   const canWriteFactory = hasConfiguredAddress(contractAddresses.factory);
   const canWriteRegistry = hasConfiguredAddress(contractAddresses.registry);
+
+  useEffect(() => {
+    let active = true;
+
+    async function resolveLatestRoomAddress() {
+      if (!waitForReceipt.isSuccess || !canWriteFactory || !publicClient) {
+        return;
+      }
+
+      try {
+        const rooms = (await publicClient.readContract({
+          abi: matchRoomFactoryAbi,
+          address: contractAddresses.factory,
+          functionName: "getRooms"
+        })) as Address[];
+        const newestRoom = rooms.at(-1);
+
+        if (!newestRoom || !isAddress(newestRoom)) {
+          if (active) {
+            setLatestRoomLookupError("Room created but latest room address could not be resolved.");
+          }
+          return;
+        }
+
+        if (!active) {
+          return;
+        }
+
+        setLatestRoomAddress(newestRoom);
+        setLatestRoomLookupError(null);
+        window.localStorage.setItem(LAST_ROOM_ADDRESS_STORAGE_KEY, newestRoom);
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        setLatestRoomLookupError(
+          error instanceof Error
+            ? `Room created but latest room lookup failed: ${error.message}`
+            : "Room created but latest room lookup failed."
+        );
+      }
+    }
+
+    resolveLatestRoomAddress();
+
+    return () => {
+      active = false;
+    };
+  }, [waitForReceipt.isSuccess, canWriteFactory, publicClient]);
 
   function handleCreateRoom() {
     setFormError(null);
@@ -141,6 +200,19 @@ export default function CreateRoomPage() {
           {txHash ? <p className="meta">Tx hash: {txHash}</p> : null}
           {waitForReceipt.isLoading ? <p className="meta">Waiting for confirmation...</p> : null}
           {waitForReceipt.isSuccess ? <p className="meta">Transaction confirmed.</p> : null}
+          {latestRoomLookupError ? (
+            <p className="meta" style={{ color: "#b42318" }}>
+              {latestRoomLookupError}
+            </p>
+          ) : null}
+          {latestRoomAddress ? (
+            <p className="meta">
+              Latest room: {latestRoomAddress}{" "}
+              <Link href={`/rooms/${latestRoomAddress}`} className="btn ghost" style={{ marginLeft: "0.5rem" }}>
+                Open room
+              </Link>
+            </p>
+          ) : null}
         </div>
       </article>
     </section>
