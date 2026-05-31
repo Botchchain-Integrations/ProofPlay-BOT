@@ -64,6 +64,13 @@ export const fantasyMatchRoomAbi = [
   {
     type: "function",
     stateMutability: "nonpayable",
+    name: "requestSettlement",
+    inputs: [],
+    outputs: []
+  },
+  {
+    type: "function",
+    stateMutability: "nonpayable",
     name: "claimPrize",
     inputs: [],
     outputs: []
