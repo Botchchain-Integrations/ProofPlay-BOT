@@ -1,8 +1,11 @@
 import Link from "next/link";
+import type { Room } from "@proofplay/shared";
+import { isAddress } from "viem";
 import { LineupCard } from "@/components/LineupCard";
 import { PlayerPicker } from "@/components/PlayerPicker";
 import { RoomActions } from "@/components/RoomActions";
 import {
+  demoMatches,
   getLineupsForRoom,
   getMatchLabel,
   getPlayersForMatch,
@@ -15,9 +18,10 @@ type RoomPageProps = {
 
 export default async function RoomDetailsPage({ params }: RoomPageProps) {
   const { id } = await params;
+  const routeIsAddress = isAddress(id);
   const room = getRoomById(id);
 
-  if (!room) {
+  if (!room && !routeIsAddress) {
     return (
       <section className="card">
         <h1>Room not found</h1>
@@ -29,14 +33,32 @@ export default async function RoomDetailsPage({ params }: RoomPageProps) {
     );
   }
 
-  const players = getPlayersForMatch(room.matchId);
-  const lineups = getLineupsForRoom(room.id);
+  const resolvedRoom: Room =
+    room ??
+    ({
+      id,
+      matchId: demoMatches[0]?.id ?? "unknown-match",
+      entryFee: "5",
+      maxParticipants: 10,
+      deadline: new Date(Date.now() + 1000 * 60 * 30).toISOString(),
+      status: "open"
+    } as const);
+
+  const players = getPlayersForMatch(resolvedRoom.matchId);
+  const lineups = room ? getLineupsForRoom(room.id) : [];
   const previewLineup = lineups[0];
 
   return (
     <section>
-      <h1 className="section-title">{getMatchLabel(room.matchId)}</h1>
-      <p className="meta">Room ID: {room.id}</p>
+      <h1 className="section-title">
+        {room ? getMatchLabel(room.matchId) : "On-Chain Fantasy Room"}
+      </h1>
+      <p className="meta">Room ID: {resolvedRoom.id}</p>
+      {!room && routeIsAddress ? (
+        <p className="meta" style={{ marginTop: "0.35rem" }}>
+          This page is using a room contract address route and on-chain actions.
+        </p>
+      ) : null}
 
       <div className="grid">
         <article className="card">
@@ -44,24 +66,28 @@ export default async function RoomDetailsPage({ params }: RoomPageProps) {
           <dl className="kv">
             <div>
               <dt>Status</dt>
-              <dd>{room.status}</dd>
+              <dd>{resolvedRoom.status}</dd>
             </div>
             <div>
               <dt>Entry Fee</dt>
-              <dd>{room.entryFee} STT</dd>
+              <dd>{resolvedRoom.entryFee} STT</dd>
             </div>
             <div>
               <dt>Max Participants</dt>
-              <dd>{room.maxParticipants}</dd>
+              <dd>{resolvedRoom.maxParticipants}</dd>
             </div>
             <div>
               <dt>Lineup Deadline</dt>
-              <dd>{new Date(room.deadline).toLocaleString("en-GB", { timeZone: "UTC" })} UTC</dd>
+              <dd>{new Date(resolvedRoom.deadline).toLocaleString("en-GB", { timeZone: "UTC" })} UTC</dd>
             </div>
           </dl>
         </article>
 
-        <RoomActions entryFee={room.entryFee} players={players} />
+        <RoomActions
+          entryFee={resolvedRoom.entryFee}
+          players={players}
+          initialRoomAddress={routeIsAddress ? id : undefined}
+        />
       </div>
 
       <div style={{ marginTop: "1rem" }}>
@@ -79,7 +105,7 @@ export default async function RoomDetailsPage({ params }: RoomPageProps) {
       ) : null}
 
       <div className="btn-row" style={{ marginTop: "1rem" }}>
-        <Link className="btn ghost" href={`/rooms/${room.id}/results`}>
+        <Link className="btn ghost" href={`/rooms/${resolvedRoom.id}/results`}>
           View Results Page
         </Link>
       </div>
