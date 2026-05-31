@@ -23,9 +23,10 @@ async function main() {
   const MatchRoomFactory = await ethers.getContractFactory("MatchRoomFactory");
   const factory = await MatchRoomFactory.deploy();
   await factory.waitForDeployment();
+  const factoryContract = factory as any;
 
   const entryFee = ethers.parseEther("0.01");
-  const tx = await factory
+  const tx = await factoryContract
     .connect(creator)
     .createRoom(matchId, entryFee, 3n, deadline, await registry.getAddress());
 
@@ -41,7 +42,7 @@ async function main() {
     .find((parsed: any) => parsed?.name === "RoomCreated");
 
   const roomAddress = created?.args.room as string;
-  const room = await ethers.getContractAt("FantasyMatchRoom", roomAddress);
+  const room = (await ethers.getContractAt("FantasyMatchRoom", roomAddress)) as any;
 
   await room.connect(alice).joinRoom({ value: entryFee });
   await room.connect(bob).joinRoom({ value: entryFee });
