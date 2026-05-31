@@ -45,6 +45,12 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
 
   const submitMutation = useWriteContract();
   const submitReceipt = useWaitForTransactionReceipt({ hash: submitMutation.data });
+  const lockMutation = useWriteContract();
+  const lockReceipt = useWaitForTransactionReceipt({ hash: lockMutation.data });
+  const requestSettlementMutation = useWriteContract();
+  const requestSettlementReceipt = useWaitForTransactionReceipt({ hash: requestSettlementMutation.data });
+  const claimMutation = useWriteContract();
+  const claimReceipt = useWaitForTransactionReceipt({ hash: claimMutation.data });
 
   useEffect(() => {
     if (initialRoomAddress && isAddress(initialRoomAddress)) {
@@ -145,6 +151,78 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
     }
   }
 
+  function handleLockRoom() {
+    setFormError(null);
+
+    if (!isConnected) {
+      setFormError("Connect wallet before locking room.");
+      return;
+    }
+
+    if (!roomConfigured) {
+      setFormError("Set a valid room contract address.");
+      return;
+    }
+
+    try {
+      lockMutation.writeContract({
+        abi: fantasyMatchRoomAbi,
+        address: roomAddress,
+        functionName: "lockRoom"
+      });
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Failed to submit lock transaction.");
+    }
+  }
+
+  function handleRequestSettlement() {
+    setFormError(null);
+
+    if (!isConnected) {
+      setFormError("Connect wallet before requesting settlement.");
+      return;
+    }
+
+    if (!roomConfigured) {
+      setFormError("Set a valid room contract address.");
+      return;
+    }
+
+    try {
+      requestSettlementMutation.writeContract({
+        abi: fantasyMatchRoomAbi,
+        address: roomAddress,
+        functionName: "requestSettlement"
+      });
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Failed to submit settlement request.");
+    }
+  }
+
+  function handleClaimPrize() {
+    setFormError(null);
+
+    if (!isConnected) {
+      setFormError("Connect wallet before claiming prize.");
+      return;
+    }
+
+    if (!roomConfigured) {
+      setFormError("Set a valid room contract address.");
+      return;
+    }
+
+    try {
+      claimMutation.writeContract({
+        abi: fantasyMatchRoomAbi,
+        address: roomAddress,
+        functionName: "claimPrize"
+      });
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "Failed to submit claim transaction.");
+    }
+  }
+
   return (
     <article className="card">
       <h2 className="section-title">On-Chain Room Actions</h2>
@@ -207,6 +285,18 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
             {submitMutation.isPending ? "Submitting..." : "Submit Lineup"}
           </button>
         </div>
+
+        <div className="btn-row" style={{ marginTop: "0.85rem" }}>
+          <button className="btn" type="button" onClick={handleLockRoom}>
+            {lockMutation.isPending ? "Locking..." : "Lock Room"}
+          </button>
+          <button className="btn" type="button" onClick={handleRequestSettlement}>
+            {requestSettlementMutation.isPending ? "Requesting..." : "Request Settlement"}
+          </button>
+          <button className="btn" type="button" onClick={handleClaimPrize}>
+            {claimMutation.isPending ? "Claiming..." : "Claim Prize"}
+          </button>
+        </div>
       </div>
 
       <div style={{ marginTop: "0.85rem" }}>
@@ -215,12 +305,30 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
         {submitMutation.error ? (
           <p className="meta" style={{ color: "#b42318" }}>{submitMutation.error.message}</p>
         ) : null}
+        {lockMutation.error ? <p className="meta" style={{ color: "#b42318" }}>{lockMutation.error.message}</p> : null}
+        {requestSettlementMutation.error ? (
+          <p className="meta" style={{ color: "#b42318" }}>{requestSettlementMutation.error.message}</p>
+        ) : null}
+        {claimMutation.error ? <p className="meta" style={{ color: "#b42318" }}>{claimMutation.error.message}</p> : null}
         {joinMutation.data ? <p className="meta">Join tx: {joinMutation.data}</p> : null}
         {submitMutation.data ? <p className="meta">Lineup tx: {submitMutation.data}</p> : null}
+        {lockMutation.data ? <p className="meta">Lock tx: {lockMutation.data}</p> : null}
+        {requestSettlementMutation.data ? (
+          <p className="meta">Settlement request tx: {requestSettlementMutation.data}</p>
+        ) : null}
+        {claimMutation.data ? <p className="meta">Claim tx: {claimMutation.data}</p> : null}
         {joinReceipt.isLoading ? <p className="meta">Waiting on join confirmation...</p> : null}
         {joinReceipt.isSuccess ? <p className="meta">Join confirmed.</p> : null}
         {submitReceipt.isLoading ? <p className="meta">Waiting on lineup confirmation...</p> : null}
         {submitReceipt.isSuccess ? <p className="meta">Lineup confirmed.</p> : null}
+        {lockReceipt.isLoading ? <p className="meta">Waiting on lock confirmation...</p> : null}
+        {lockReceipt.isSuccess ? <p className="meta">Room locked.</p> : null}
+        {requestSettlementReceipt.isLoading ? (
+          <p className="meta">Waiting on settlement request confirmation...</p>
+        ) : null}
+        {requestSettlementReceipt.isSuccess ? <p className="meta">Settlement requested.</p> : null}
+        {claimReceipt.isLoading ? <p className="meta">Waiting on claim confirmation...</p> : null}
+        {claimReceipt.isSuccess ? <p className="meta">Prize claimed.</p> : null}
       </div>
     </article>
   );
