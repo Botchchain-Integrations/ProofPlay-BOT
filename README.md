@@ -35,3 +35,7 @@ pnpm dev
 
 - This scaffold uses deterministic demo data via API routes so settlement is demo-safe.
 - Replace demo stats endpoint with a live football API later without changing the on-chain room lifecycle.
+
+## Demo runbook
+
+- Local Anvil end-to-end flow: `docs/e2e-local-demo-runbook.md`
