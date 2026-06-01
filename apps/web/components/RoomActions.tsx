@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Player } from "@proofplay/shared";
-import { isAddress, parseEther, type Address } from "viem";
-import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { formatEther, isAddress, parseEther, type Address } from "viem";
+import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import {
   contractAddresses,
   fantasyMatchRoomAbi,
@@ -74,6 +74,26 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
 
   const roomAddress = useMemo(() => normalizeAddress(roomAddressInput), [roomAddressInput]);
   const roomConfigured = hasConfiguredAddress(roomAddress);
+  const fallbackEntryFeeWei = useMemo(() => {
+    try {
+      return parseEther(entryFee);
+    } catch {
+      return 0n;
+    }
+  }, [entryFee]);
+
+  const roomEntryFeeQuery = useReadContract({
+    abi: fantasyMatchRoomAbi,
+    address: roomAddress,
+    functionName: "entryFee",
+    query: {
+      enabled: roomConfigured
+    }
+  });
+  const onChainEntryFeeWei =
+    typeof roomEntryFeeQuery.data === "bigint" ? roomEntryFeeQuery.data : null;
+  const joinEntryFeeWei = onChainEntryFeeWei ?? fallbackEntryFeeWei;
+  const joinEntryFeeLabel = onChainEntryFeeWei ? formatEther(onChainEntryFeeWei) : entryFee;
 
   function togglePlayer(playerId: number) {
     setSelectedPlayerIds((current) => {
@@ -107,7 +127,7 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
         abi: fantasyMatchRoomAbi,
         address: roomAddress,
         functionName: "joinRoom",
-        value: parseEther(entryFee)
+        value: joinEntryFeeWei
       });
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Failed to submit join transaction.");
@@ -239,7 +259,7 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
 
       <div className="btn-row" style={{ marginTop: "0.85rem" }}>
         <button className="btn primary" type="button" onClick={handleJoinRoom}>
-          {joinMutation.isPending ? "Joining..." : `Join Room (${entryFee} STT)`}
+          {joinMutation.isPending ? "Joining..." : `Join Room (${joinEntryFeeLabel} STT)`}
         </button>
       </div>
 
@@ -310,6 +330,11 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
           <p className="meta" style={{ color: "#b42318" }}>{requestSettlementMutation.error.message}</p>
         ) : null}
         {claimMutation.error ? <p className="meta" style={{ color: "#b42318" }}>{claimMutation.error.message}</p> : null}
+        {roomEntryFeeQuery.error ? (
+          <p className="meta" style={{ color: "#b42318" }}>
+            Failed to read room entry fee: {roomEntryFeeQuery.error.message}
+          </p>
+        ) : null}
         {joinMutation.data ? <p className="meta">Join tx: {joinMutation.data}</p> : null}
         {submitMutation.data ? <p className="meta">Lineup tx: {submitMutation.data}</p> : null}
         {lockMutation.data ? <p className="meta">Lock tx: {lockMutation.data}</p> : null}
