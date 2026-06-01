@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Room } from "@proofplay/shared";
 import { isAddress } from "viem";
 import { LineupCard } from "@/components/LineupCard";
+import { OnChainRoomStatus } from "@/components/OnChainRoomStatus";
 import { PlayerPicker } from "@/components/PlayerPicker";
 import { RoomActions } from "@/components/RoomActions";
 import {
@@ -61,27 +62,31 @@ export default async function RoomDetailsPage({ params }: RoomPageProps) {
       ) : null}
 
       <div className="grid">
-        <article className="card">
-          <h2 className="section-title">Room Status</h2>
-          <dl className="kv">
-            <div>
-              <dt>Status</dt>
-              <dd>{resolvedRoom.status}</dd>
-            </div>
-            <div>
-              <dt>Entry Fee</dt>
-              <dd>{resolvedRoom.entryFee} STT</dd>
-            </div>
-            <div>
-              <dt>Max Participants</dt>
-              <dd>{resolvedRoom.maxParticipants}</dd>
-            </div>
-            <div>
-              <dt>Lineup Deadline</dt>
-              <dd>{new Date(resolvedRoom.deadline).toLocaleString("en-GB", { timeZone: "UTC" })} UTC</dd>
-            </div>
-          </dl>
-        </article>
+        {routeIsAddress ? (
+          <OnChainRoomStatus roomAddress={id} />
+        ) : (
+          <article className="card">
+            <h2 className="section-title">Room Status</h2>
+            <dl className="kv">
+              <div>
+                <dt>Status</dt>
+                <dd>{resolvedRoom.status}</dd>
+              </div>
+              <div>
+                <dt>Entry Fee</dt>
+                <dd>{resolvedRoom.entryFee} STT</dd>
+              </div>
+              <div>
+                <dt>Max Participants</dt>
+                <dd>{resolvedRoom.maxParticipants}</dd>
+              </div>
+              <div>
+                <dt>Lineup Deadline</dt>
+                <dd>{new Date(resolvedRoom.deadline).toLocaleString("en-GB", { timeZone: "UTC" })} UTC</dd>
+              </div>
+            </dl>
+          </article>
+        )}
 
         <RoomActions
           entryFee={resolvedRoom.entryFee}
