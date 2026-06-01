@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Player } from "@proofplay/shared";
 import { formatEther, isAddress, parseEther, type Address } from "viem";
-import { useAccount, useReadContract, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useReadContract,
+  useReadContracts,
+  useWaitForTransactionReceipt,
+  useWriteContract
+} from "wagmi";
 import {
   contractAddresses,
   fantasyMatchRoomAbi,
@@ -27,7 +33,7 @@ function normalizeAddress(value: string): Address {
 }
 
 export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActionsProps) {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
 
   const [roomAddressInput, setRoomAddressInput] = useState<string>(() => {
     if (initialRoomAddress && isAddress(initialRoomAddress)) {
@@ -94,6 +100,144 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
     typeof roomEntryFeeQuery.data === "bigint" ? roomEntryFeeQuery.data : null;
   const joinEntryFeeWei = onChainEntryFeeWei ?? fallbackEntryFeeWei;
   const joinEntryFeeLabel = onChainEntryFeeWei ? formatEther(onChainEntryFeeWei) : entryFee;
+  const roomStateQuery = useReadContracts({
+    contracts: roomConfigured
+      ? [
+          {
+            abi: fantasyMatchRoomAbi,
+            address: roomAddress,
+            functionName: "locked" as const
+          },
+          {
+            abi: fantasyMatchRoomAbi,
+            address: roomAddress,
+            functionName: "settled" as const
+          },
+          {
+            abi: fantasyMatchRoomAbi,
+            address: roomAddress,
+            functionName: "payoutComplete" as const
+          },
+          {
+            abi: fantasyMatchRoomAbi,
+            address: roomAddress,
+            functionName: "lineupDeadline" as const
+          },
+          {
+            abi: fantasyMatchRoomAbi,
+            address: roomAddress,
+            functionName: "maxParticipants" as const
+          },
+          {
+            abi: fantasyMatchRoomAbi,
+            address: roomAddress,
+            functionName: "winner" as const
+          },
+          {
+            abi: fantasyMatchRoomAbi,
+            address: roomAddress,
+            functionName: "getParticipants" as const
+          }
+        ]
+      : [],
+    query: {
+      enabled: roomConfigured
+    }
+  });
+  const userLineupQuery = useReadContract({
+    abi: fantasyMatchRoomAbi,
+    address: roomAddress,
+    functionName: "getLineup",
+    args: [(address ?? ZERO_ADDRESS) as Address],
+    query: {
+      enabled: roomConfigured && Boolean(address)
+    }
+  });
+  const locked = roomStateQuery.data?.[0]?.result === true;
+  const settled = roomStateQuery.data?.[1]?.result === true;
+  const payoutComplete = roomStateQuery.data?.[2]?.result === true;
+  const lineupDeadline =
+    typeof roomStateQuery.data?.[3]?.result === "bigint" ? roomStateQuery.data[3].result : 0n;
+  const maxParticipants =
+    typeof roomStateQuery.data?.[4]?.result === "bigint" ? roomStateQuery.data[4].result : 0n;
+  const winnerAddress =
+    typeof roomStateQuery.data?.[5]?.result === "string" && isAddress(roomStateQuery.data[5].result)
+      ? (roomStateQuery.data[5].result as Address)
+      : ZERO_ADDRESS;
+  const participants = ((roomStateQuery.data?.[6]?.result as Address[] | undefined) ?? []).filter((value) =>
+    isAddress(value)
+  );
+  const deadlinePassed = lineupDeadline > 0n && BigInt(Math.floor(Date.now() / 1000)) >= lineupDeadline;
+  const roomFull = maxParticipants > 0n && BigInt(participants.length) >= maxParticipants;
+  const userJoined = address
+    ? participants.some((participant) => participant.toLowerCase() === address.toLowerCase())
+    : false;
+  const userLineup = (userLineupQuery.data as readonly bigint[] | undefined) ?? [];
+  const userLineupSubmitted = userLineup.length > 0;
+  const isWinner =
+    Boolean(address) &&
+    winnerAddress.toLowerCase() !== ZERO_ADDRESS.toLowerCase() &&
+    winnerAddress.toLowerCase() === address?.toLowerCase();
+  const lineupSelectionValid =
+    selectedPlayerIds.length === 5 && selectedPlayerIds.includes(Number(captainId));
+  const canJoin =
+    isConnected &&
+    roomConfigured &&
+    !locked &&
+    !settled &&
+    !deadlinePassed &&
+    !roomFull &&
+    !userJoined &&
+    joinEntryFeeWei > 0n;
+  const canSubmit =
+    isConnected &&
+    roomConfigured &&
+    !locked &&
+    !settled &&
+    !deadlinePassed &&
+    userJoined;
+  const canLock = isConnected && roomConfigured && !locked && !settled;
+  const canRequestSettlement = isConnected && roomConfigured && locked && !settled;
+  const canClaim = isConnected && roomConfigured && settled && !payoutComplete && Boolean(isWinner);
+  const joinButtonLabel = joinMutation.isPending
+    ? "Joining..."
+    : !isConnected
+      ? "Connect wallet to join"
+      : !roomConfigured
+        ? "Set room address"
+        : settled
+          ? "Room Settled"
+          : locked
+            ? "Room Locked"
+            : deadlinePassed
+              ? "Deadline Passed"
+              : roomFull
+                ? "Room Full"
+                : userJoined
+                  ? "Joined"
+                  : `Join Room (${joinEntryFeeLabel} STT)`;
+  const submitButtonLabel = submitMutation.isPending
+    ? "Submitting..."
+    : userLineupSubmitted && canSubmit
+      ? "Update Lineup"
+      : "Submit Lineup";
+  const lockButtonLabel = lockMutation.isPending ? "Locking..." : locked ? "Room Locked" : "Lock Room";
+  const requestSettlementButtonLabel = requestSettlementMutation.isPending
+    ? "Requesting..."
+    : settled
+      ? "Already Settled"
+      : locked
+        ? "Request Settlement"
+        : "Lock First";
+  const claimButtonLabel = claimMutation.isPending
+    ? "Claiming..."
+    : payoutComplete
+      ? "Claimed"
+      : settled
+        ? isWinner
+          ? "Claim Prize"
+          : "Not Winner"
+        : "Not Settled";
 
   function togglePlayer(playerId: number) {
     setSelectedPlayerIds((current) => {
@@ -122,6 +266,11 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
       return;
     }
 
+    if (!canJoin) {
+      setFormError("Room is not joinable in the current state.");
+      return;
+    }
+
     try {
       joinMutation.writeContract({
         abi: fantasyMatchRoomAbi,
@@ -144,6 +293,11 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
 
     if (!roomConfigured) {
       setFormError("Set a valid room contract address.");
+      return;
+    }
+
+    if (!canSubmit) {
+      setFormError("You can only submit lineup after joining an open room.");
       return;
     }
 
@@ -184,6 +338,11 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
       return;
     }
 
+    if (!canLock) {
+      setFormError("Room cannot be locked in current state.");
+      return;
+    }
+
     try {
       lockMutation.writeContract({
         abi: fantasyMatchRoomAbi,
@@ -208,6 +367,11 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
       return;
     }
 
+    if (!canRequestSettlement) {
+      setFormError("Settlement can only be requested after room is locked.");
+      return;
+    }
+
     try {
       requestSettlementMutation.writeContract({
         abi: fantasyMatchRoomAbi,
@@ -229,6 +393,11 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
 
     if (!roomConfigured) {
       setFormError("Set a valid room contract address.");
+      return;
+    }
+
+    if (!canClaim) {
+      setFormError("Prize is claimable only by winner after settlement.");
       return;
     }
 
@@ -258,8 +427,8 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
       </div>
 
       <div className="btn-row" style={{ marginTop: "0.85rem" }}>
-        <button className="btn primary" type="button" onClick={handleJoinRoom}>
-          {joinMutation.isPending ? "Joining..." : `Join Room (${joinEntryFeeLabel} STT)`}
+        <button className="btn primary" type="button" onClick={handleJoinRoom} disabled={!canJoin}>
+          {joinButtonLabel}
         </button>
       </div>
 
@@ -301,20 +470,30 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
         </div>
 
         <div className="btn-row" style={{ marginTop: "0.85rem" }}>
-          <button className="btn" type="button" onClick={handleSubmitLineup}>
-            {submitMutation.isPending ? "Submitting..." : "Submit Lineup"}
+          <button
+            className="btn"
+            type="button"
+            onClick={handleSubmitLineup}
+            disabled={!canSubmit || !lineupSelectionValid}
+          >
+            {submitButtonLabel}
           </button>
         </div>
 
         <div className="btn-row" style={{ marginTop: "0.85rem" }}>
-          <button className="btn" type="button" onClick={handleLockRoom}>
-            {lockMutation.isPending ? "Locking..." : "Lock Room"}
+          <button className="btn" type="button" onClick={handleLockRoom} disabled={!canLock}>
+            {lockButtonLabel}
           </button>
-          <button className="btn" type="button" onClick={handleRequestSettlement}>
-            {requestSettlementMutation.isPending ? "Requesting..." : "Request Settlement"}
+          <button
+            className="btn"
+            type="button"
+            onClick={handleRequestSettlement}
+            disabled={!canRequestSettlement}
+          >
+            {requestSettlementButtonLabel}
           </button>
-          <button className="btn" type="button" onClick={handleClaimPrize}>
-            {claimMutation.isPending ? "Claiming..." : "Claim Prize"}
+          <button className="btn" type="button" onClick={handleClaimPrize} disabled={!canClaim}>
+            {claimButtonLabel}
           </button>
         </div>
       </div>
@@ -333,6 +512,16 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
         {roomEntryFeeQuery.error ? (
           <p className="meta" style={{ color: "#b42318" }}>
             Failed to read room entry fee: {roomEntryFeeQuery.error.message}
+          </p>
+        ) : null}
+        {roomStateQuery.error ? (
+          <p className="meta" style={{ color: "#b42318" }}>
+            Failed to read room state: {roomStateQuery.error.message}
+          </p>
+        ) : null}
+        {userLineupQuery.error ? (
+          <p className="meta" style={{ color: "#b42318" }}>
+            Failed to read your lineup state: {userLineupQuery.error.message}
           </p>
         ) : null}
         {joinMutation.data ? <p className="meta">Join tx: {joinMutation.data}</p> : null}
