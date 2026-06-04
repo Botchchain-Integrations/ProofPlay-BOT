@@ -16,6 +16,14 @@ function shortenAddress(address: Address) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
+function toDateTimeLocalValue(date: Date) {
+  const pad = (value: number) => value.toString().padStart(2, "0");
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours()
+  )}:${pad(date.getMinutes())}`;
+}
+
 export default function CreateRoomPage() {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
@@ -29,7 +37,8 @@ export default function CreateRoomPage() {
   const [matchId, setMatchId] = useState(demoMatches[0]?.id ?? "");
   const [entryFee, setEntryFee] = useState("5");
   const [maxParticipants, setMaxParticipants] = useState("10");
-  const [deadline, setDeadline] = useState("2026-05-27T18:30");
+  const [minimumDeadline] = useState(() => toDateTimeLocalValue(new Date(Date.now() + 60 * 1000)));
+  const [deadline, setDeadline] = useState(() => toDateTimeLocalValue(new Date(Date.now() + 60 * 60 * 1000)));
   const [formError, setFormError] = useState<string | null>(null);
   const [latestRoomAddress, setLatestRoomAddress] = useState<Address | null>(null);
   const [latestRoomLookupError, setLatestRoomLookupError] = useState<string | null>(null);
@@ -175,10 +184,11 @@ export default function CreateRoomPage() {
           </div>
 
           <div className="field">
-            <label>Lineup Deadline (UTC)</label>
+            <label>Lineup Deadline</label>
             <input
               type="datetime-local"
               value={deadline}
+              min={minimumDeadline}
               onChange={(event) => setDeadline(event.target.value)}
             />
           </div>
