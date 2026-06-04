@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { isAddress, keccak256, parseEther, toBytes, type Address } from "viem";
 import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
-import { WalletButton } from "@/components/WalletButton";
 import {
   contractAddresses,
   hasConfiguredAddress,
@@ -13,8 +12,12 @@ import {
 } from "@/lib/contracts";
 import { demoMatches } from "@/lib/demo-data";
 
+function shortenAddress(address: Address) {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 export default function CreateRoomPage() {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const writeContract = useWriteContract();
   const txHash = writeContract.data;
@@ -185,7 +188,9 @@ export default function CreateRoomPage() {
           <button className="btn primary" type="button" onClick={handleCreateRoom}>
             {writeContract.isPending ? "Sending..." : "Create Room"}
           </button>
-          <WalletButton />
+          <span className={`pill ${isConnected ? "open" : ""}`}>
+            {isConnected && address ? `Connected: ${shortenAddress(address)}` : "Connect wallet in header"}
+          </span>
         </div>
 
         <div style={{ marginTop: "1rem" }}>
