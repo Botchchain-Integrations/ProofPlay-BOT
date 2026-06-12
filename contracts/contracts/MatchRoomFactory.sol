@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {FantasyMatchRoom} from "./FantasyMatchRoom.sol";
 
 contract MatchRoomFactory {
+    address public immutable somniaPlatform;
     address[] public allRooms;
     mapping(address => address[]) private _roomsByCreator;
 
@@ -14,8 +15,13 @@ contract MatchRoomFactory {
         uint256 entryFee,
         uint256 maxParticipants,
         uint256 lineupDeadline,
-        address registry
+        address registry,
+        address somniaPlatform
     );
+
+    constructor(address somniaPlatform_) {
+        somniaPlatform = somniaPlatform_;
+    }
 
     function createRoom(
         bytes32 matchId,
@@ -30,7 +36,8 @@ contract MatchRoomFactory {
             matchId,
             entryFee,
             maxParticipants,
-            lineupDeadline
+            lineupDeadline,
+            somniaPlatform
         );
 
         roomAddress = address(room);
@@ -44,7 +51,8 @@ contract MatchRoomFactory {
             entryFee,
             maxParticipants,
             lineupDeadline,
-            registry
+            registry,
+            somniaPlatform
         );
     }
 
