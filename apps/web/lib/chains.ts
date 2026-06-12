@@ -33,7 +33,7 @@ export const anvilTestnet = defineChain({
   name: "Anvil Local Testnet",
   nativeCurrency: {
     name: "Anvil Test Token",
-    symbol: "STT",
+    symbol: "ETH",
     decimals: 18
   },
   rpcUrls: {

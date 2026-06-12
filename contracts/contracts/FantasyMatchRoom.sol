@@ -351,7 +351,7 @@ contract FantasyMatchRoom {
 
             for (uint256 j = 0; j < lineup.length; j++) {
                 uint256 playerId = lineup[j];
-                PlayerStat memory stat = _findStatMemory(stats, playerId);
+                PlayerStat memory stat = _findStat(stats, playerId);
                 int256 points = _scorePlayer(stat, registry.getPlayerPosition(matchId, playerId));
 
                 if (captainOf[participant] == playerId) {
@@ -371,60 +371,11 @@ contract FantasyMatchRoom {
     }
 
     function _calculateScores(PlayerStat[] calldata stats) internal {
-        highestScore = type(int256).min;
-        winner = address(0);
-
-        for (uint256 i = 0; i < participants.length; i++) {
-            address participant = participants[i];
-            require(lineupSubmitted[participant], "Missing lineup for participant");
-
-            uint256[] storage lineup = _lineups[participant];
-            int256 totalScore = 0;
-
-            for (uint256 j = 0; j < lineup.length; j++) {
-                uint256 playerId = lineup[j];
-                PlayerStat calldata stat = _findStat(stats, playerId);
-                int256 points = _scorePlayer(stat, registry.getPlayerPosition(matchId, playerId));
-
-                if (captainOf[participant] == playerId) {
-                    points *= CAPTAIN_MULTIPLIER;
-                }
-
-                totalScore += points;
-            }
-
-            scores[participant] = totalScore;
-
-            if (winner == address(0) || totalScore > highestScore) {
-                highestScore = totalScore;
-                winner = participant;
-            }
+        PlayerStat[] memory statsMem = new PlayerStat[](stats.length);
+        for (uint256 i = 0; i < stats.length; i++) {
+            statsMem[i] = stats[i];
         }
-    }
-
-    function _scorePlayer(
-        PlayerStat calldata stat,
-        PlayerRegistry.Position position
-    ) internal pure returns (int256) {
-        int256 points = 0;
-
-        points += int256(uint256(stat.goals)) * GOAL_POINTS;
-        points += int256(uint256(stat.assists)) * ASSIST_POINTS;
-        points += int256(uint256(stat.yellowCards)) * YELLOW_CARD_POINTS;
-        points += int256(uint256(stat.redCards)) * RED_CARD_POINTS;
-
-        if (stat.minutesPlayed >= 60) {
-            points += MINUTES_60_PLUS_POINTS;
-        }
-
-        if (
-            stat.cleanSheet &&
-            (position == PlayerRegistry.Position.Goalkeeper || position == PlayerRegistry.Position.Defender)
-        ) {
-            points += CLEAN_SHEET_POINTS;
-        }
-
-        return points;
+        _computeScores(statsMem);
     }
 
     function _scorePlayer(
@@ -453,19 +404,6 @@ contract FantasyMatchRoom {
     }
 
     function _findStat(
-        PlayerStat[] calldata stats,
-        uint256 playerId
-    ) internal pure returns (PlayerStat calldata matchedStat) {
-        for (uint256 i = 0; i < stats.length; i++) {
-            if (stats[i].playerId == playerId) {
-                return stats[i];
-            }
-        }
-
-        revert("Missing stat for player");
-    }
-
-    function _findStatMemory(
         PlayerStat[] memory stats,
         uint256 playerId
     ) internal pure returns (PlayerStat memory matchedStat) {
@@ -478,6 +416,9 @@ contract FantasyMatchRoom {
         revert("Missing stat for player");
     }
 
+    bytes1 constant _COLON = ':';
+    bytes1 constant _COMMA = ',';
+
     function _parseStatsString(string memory data) internal pure returns (PlayerStat[] memory stats) {
         bytes memory b = bytes(data);
         if (b.length == 0) {
@@ -486,7 +427,7 @@ contract FantasyMatchRoom {
 
         uint256 commaCount = 0;
         for (uint256 i = 0; i < b.length; i++) {
-            if (b[i] == ',') commaCount++;
+            if (b[i] == _COMMA) commaCount++;
         }
 
         uint256 count = commaCount + 1;
@@ -504,46 +445,50 @@ contract FantasyMatchRoom {
                 minutesPlayed: uint16(0)
             });
 
-            pos = _skipTo(b, pos, ':');
-            if (pos < b.length) pos++;
+            pos = _skipPast(b, pos, _COLON);
             stats[p].goals = uint8(_parseUint(b, pos));
 
-            pos = _skipTo(b, pos, ':');
-            if (pos < b.length) pos++;
+            pos = _skipPast(b, pos, _COLON);
             stats[p].assists = uint8(_parseUint(b, pos));
 
-            pos = _skipTo(b, pos, ':');
-            if (pos < b.length) pos++;
+            pos = _skipPast(b, pos, _COLON);
             stats[p].yellowCards = uint8(_parseUint(b, pos));
 
-            pos = _skipTo(b, pos, ':');
-            if (pos < b.length) pos++;
+            pos = _skipPast(b, pos, _COLON);
             stats[p].redCards = uint8(_parseUint(b, pos));
 
-            pos = _skipTo(b, pos, ':');
-            if (pos < b.length) pos++;
+            pos = _skipPast(b, pos, _COLON);
             stats[p].cleanSheet = _parseUint(b, pos) == 1;
 
-            pos = _skipTo(b, pos, ':');
-            if (pos < b.length) pos++;
+            pos = _skipPast(b, pos, _COLON);
             stats[p].minutesPlayed = uint16(_parseUint(b, pos));
 
-            pos = _skipTo(b, pos, ',');
-            if (pos < b.length && b[pos] == ',') pos++;
+            pos = _skipTo(b, pos, _COMMA);
+            if (pos < b.length) pos++;
         }
     }
 
     function _parseUint(bytes memory b, uint256 start) internal pure returns (uint256 value) {
-        while (start < b.length && b[start] >= '0' && b[start] <= '9') {
+        bytes1 zeroDigit = '0';
+        bytes1 nineDigit = '9';
+        while (start < b.length && b[start] >= zeroDigit && b[start] <= nineDigit) {
             value = value * 10 + uint256(uint8(b[start]) - 48);
             start++;
         }
     }
 
-    function _skipTo(bytes memory b, uint256 start, uint8 delimiter) internal pure returns (uint256) {
+    function _skipTo(bytes memory b, uint256 start, bytes1 delimiter) internal pure returns (uint256) {
         while (start < b.length && b[start] != delimiter) {
             start++;
         }
+        return start;
+    }
+
+    function _skipPast(bytes memory b, uint256 start, bytes1 delimiter) internal pure returns (uint256) {
+        while (start < b.length && b[start] != delimiter) {
+            start++;
+        }
+        if (start < b.length) start++;
         return start;
     }
 

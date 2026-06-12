@@ -23,7 +23,7 @@ describe("FantasyMatchRoom MVP", function () {
     const deadline = BigInt(now + 3600);
 
     const MatchRoomFactory = await ethers.getContractFactory("MatchRoomFactory");
-    const factory = (await MatchRoomFactory.deploy()) as any;
+    const factory = (await MatchRoomFactory.deploy(ethers.ZeroAddress)) as any;
     await factory.waitForDeployment();
 
     const entryFee = ethers.parseEther("0.01");
