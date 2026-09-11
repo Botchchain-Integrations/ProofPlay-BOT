@@ -215,7 +215,7 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
                 ? "Room Full"
                 : userJoined
                   ? "Joined"
-                  : `Join Room (${joinEntryFeeLabel} STT)`;
+                  : `Join Room (${joinEntryFeeLabel} BOT)`;
   const submitButtonLabel = submitMutation.isPending
     ? "Submitting..."
     : userLineupSubmitted && canSubmit

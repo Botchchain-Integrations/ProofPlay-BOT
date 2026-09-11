@@ -1,0 +1,341 @@
+{
+  "fixtureId": "812679",
+  "matchKey": "812679:Arsenal:Chelsea",
+  "matchId": "0xe38125d47e69ceef81eaf8867ffbad8aac7bde655d6baff96b6642ff2d447aeb",
+  "homeTeam": "Arsenal",
+  "awayTeam": "Chelsea",
+  "players": [
+    {
+      "id": 1,
+      "name": "David Raya",
+      "team": "Arsenal",
+      "position": "GK"
+    },
+    {
+      "id": 2,
+      "name": "Ben White",
+      "team": "Arsenal",
+      "position": "DEF"
+    },
+    {
+      "id": 3,
+      "name": "Ezri Konsa",
+      "team": "Arsenal",
+      "position": "DEF"
+    },
+    {
+      "id": 4,
+      "name": "Gabriel Magalhães",
+      "team": "Arsenal",
+      "position": "DEF"
+    },
+    {
+      "id": 5,
+      "name": "Riccardo Calafiori",
+      "team": "Arsenal",
+      "position": "DEF"
+    },
+    {
+      "id": 6,
+      "name": "Declan Rice",
+      "team": "Arsenal",
+      "position": "MID"
+    },
+    {
+      "id": 7,
+      "name": "Myles Lewis-Skelly",
+      "team": "Arsenal",
+      "position": "MID"
+    },
+    {
+      "id": 8,
+      "name": "Bukayo Saka",
+      "team": "Arsenal",
+      "position": "MID"
+    },
+    {
+      "id": 9,
+      "name": "Martin Ødegaard",
+      "team": "Arsenal",
+      "position": "MID"
+    },
+    {
+      "id": 10,
+      "name": "Christos Tzolis",
+      "team": "Arsenal",
+      "position": "MID"
+    },
+    {
+      "id": 11,
+      "name": "Kai Havertz",
+      "team": "Arsenal",
+      "position": "FWD"
+    },
+    {
+      "id": 12,
+      "name": "Emiliano Martínez",
+      "team": "Chelsea",
+      "position": "GK"
+    },
+    {
+      "id": 13,
+      "name": "Josh Acheampong",
+      "team": "Chelsea",
+      "position": "DEF"
+    },
+    {
+      "id": 14,
+      "name": "Maxence Lacroix",
+      "team": "Chelsea",
+      "position": "DEF"
+    },
+    {
+      "id": 15,
+      "name": "Wesley Fofana",
+      "team": "Chelsea",
+      "position": "DEF"
+    },
+    {
+      "id": 16,
+      "name": "Pedro Neto",
+      "team": "Chelsea",
+      "position": "MID"
+    },
+    {
+      "id": 17,
+      "name": "Roméo Lavia",
+      "team": "Chelsea",
+      "position": "MID"
+    },
+    {
+      "id": 18,
+      "name": "Reece James",
+      "team": "Chelsea",
+      "position": "MID"
+    },
+    {
+      "id": 19,
+      "name": "Jorrel Hato",
+      "team": "Chelsea",
+      "position": "MID"
+    },
+    {
+      "id": 20,
+      "name": "Cole Palmer",
+      "team": "Chelsea",
+      "position": "FWD"
+    },
+    {
+      "id": 21,
+      "name": "Morgan Rogers",
+      "team": "Chelsea",
+      "position": "FWD"
+    },
+    {
+      "id": 22,
+      "name": "João Pedro",
+      "team": "Chelsea",
+      "position": "FWD"
+    }
+  ],
+  "stats": [
+    {
+      "playerId": 1,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 2,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 3,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 4,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 5,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 67
+    },
+    {
+      "playerId": 6,
+      "goals": 0,
+      "assists": 1,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 7,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 67
+    },
+    {
+      "playerId": 8,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 90
+    },
+    {
+      "playerId": 9,
+      "goals": 1,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 77
+    },
+    {
+      "playerId": 10,
+      "goals": 0,
+      "assists": 1,
+      "yellowCards": 1,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 11,
+      "goals": 1,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 78
+    },
+    {
+      "playerId": 12,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 13,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 14,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 1,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 15,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 16,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 81
+    },
+    {
+      "playerId": 17,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 60
+    },
+    {
+      "playerId": 18,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 19,
+      "goals": 0,
+      "assists": 1,
+      "yellowCards": 0,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 60
+    },
+    {
+      "playerId": 20,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 1,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    },
+    {
+      "playerId": 21,
+      "goals": 1,
+      "assists": 0,
+      "yellowCards": 1,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 87
+    },
+    {
+      "playerId": 22,
+      "goals": 0,
+      "assists": 0,
+      "yellowCards": 1,
+      "redCards": 0,
+      "cleanSheet": false,
+      "minutesPlayed": 95
+    }
+  ]
+}

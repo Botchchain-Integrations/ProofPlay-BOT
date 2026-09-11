@@ -142,7 +142,7 @@ export function OnChainRoomStatus({ roomAddress }: OnChainRoomStatusProps) {
         </div>
         <div>
           <dt>Entry Fee</dt>
-          <dd>{formatEther(entryFee)} STT</dd>
+          <dd>{formatEther(entryFee)} BOT</dd>
         </div>
         <div>
           <dt>Participants</dt>

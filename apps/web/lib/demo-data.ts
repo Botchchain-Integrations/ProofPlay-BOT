@@ -1,3 +1,4 @@
+import { keccak256, toBytes } from "viem";
 import type { Match, Player, Room } from "@proofplay/shared";
 
 export type DemoLineup = {
@@ -21,6 +22,13 @@ export type DemoRoomReceipt = {
 };
 
 export const demoMatches: Match[] = [
+  {
+    id: "812679",
+    homeTeam: "Arsenal",
+    awayTeam: "Chelsea",
+    kickoffTime: "2026-09-06T16:30:00Z",
+    status: "finished"
+  },
   {
     id: "ars-che-2026-05-24",
     homeTeam: "Arsenal",
@@ -57,6 +65,32 @@ export const demoRooms: Room[] = [
 ];
 
 export const demoPlayersByMatch: Record<string, Player[]> = {
+  // Seeded on BOT Chain Testnet PlayerRegistry for fixture 812679:Arsenal:Chelsea
+  // (Arsenal 2-1 Chelsea, played 2026-09-06). Ids must match the registry pool.
+  "812679": [
+    { id: 1, name: "David Raya", team: "Arsenal", position: "GK" },
+    { id: 2, name: "Ben White", team: "Arsenal", position: "DEF" },
+    { id: 3, name: "Ezri Konsa", team: "Arsenal", position: "DEF" },
+    { id: 4, name: "Gabriel Magalhães", team: "Arsenal", position: "DEF" },
+    { id: 5, name: "Riccardo Calafiori", team: "Arsenal", position: "DEF" },
+    { id: 6, name: "Declan Rice", team: "Arsenal", position: "MID" },
+    { id: 7, name: "Myles Lewis-Skelly", team: "Arsenal", position: "MID" },
+    { id: 8, name: "Bukayo Saka", team: "Arsenal", position: "MID" },
+    { id: 9, name: "Martin Ødegaard", team: "Arsenal", position: "MID" },
+    { id: 10, name: "Christos Tzolis", team: "Arsenal", position: "MID" },
+    { id: 11, name: "Kai Havertz", team: "Arsenal", position: "FWD" },
+    { id: 12, name: "Emiliano Martínez", team: "Chelsea", position: "GK" },
+    { id: 13, name: "Josh Acheampong", team: "Chelsea", position: "DEF" },
+    { id: 14, name: "Maxence Lacroix", team: "Chelsea", position: "DEF" },
+    { id: 15, name: "Wesley Fofana", team: "Chelsea", position: "DEF" },
+    { id: 16, name: "Pedro Neto", team: "Chelsea", position: "MID" },
+    { id: 17, name: "Roméo Lavia", team: "Chelsea", position: "MID" },
+    { id: 18, name: "Reece James", team: "Chelsea", position: "MID" },
+    { id: 19, name: "Jorrel Hato", team: "Chelsea", position: "MID" },
+    { id: 20, name: "Cole Palmer", team: "Chelsea", position: "FWD" },
+    { id: 21, name: "Morgan Rogers", team: "Chelsea", position: "FWD" },
+    { id: 22, name: "João Pedro", team: "Chelsea", position: "FWD" }
+  ],
   "ars-che-2026-05-24": [
     { id: 1, name: "David Raya", team: "Arsenal", position: "GK" },
     { id: 2, name: "William Saliba", team: "Arsenal", position: "DEF" },
@@ -117,11 +151,21 @@ export const demoReceiptsByRoom: Record<string, DemoRoomReceipt> = {
 export function getMatchLabel(matchId: string) {
   const match = demoMatches.find((item) => item.id === matchId);
 
-  if (!match) {
-    return matchId;
+  if (match) {
+    return `${match.homeTeam} vs ${match.awayTeam}`;
   }
 
-  return `${match.homeTeam} vs ${match.awayTeam}`;
+  // On-chain rooms store the keccak256 hash of `${id}:${home}:${away}`. Resolve
+  // the hash back to team names for the known matches.
+  for (const item of demoMatches) {
+    const hashed = keccak256(toBytes(`${item.id}:${item.homeTeam}:${item.awayTeam}`));
+
+    if (hashed.toLowerCase() === matchId.toLowerCase()) {
+      return `${item.homeTeam} vs ${item.awayTeam}`;
+    }
+  }
+
+  return matchId;
 }
 
 export function getRoomById(roomId: string) {

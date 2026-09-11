@@ -17,13 +17,13 @@ export default async function RoomSettlePage({ params }: RoomSettlePageProps) {
       <article className="card" style={{ marginTop: "1rem" }}>
         <h2 className="section-title">Local Mock Settlement</h2>
         <p className="meta">
-          Use this for the Anvil demo flow where the creator submits a mock agent callback to settle the room.
+          Use this for the BOT Chain Testnet demo flow where the creator submits a mock agent callback to settle the room.
         </p>
 
         {roomAddress ? (
           <>
             <p className="meta" style={{ marginTop: "0.7rem" }}>
-              Run this from the repo root while Anvil and frontend are running:
+              Run this from the repo root while the BOT Chain testnet and frontend are running:
             </p>
             <pre className="receipt" style={{ marginTop: "0.6rem", whiteSpace: "pre-wrap" }}>
               ROOM_ADDRESS={roomAddress} pnpm --filter @proofplay/contracts settle:local

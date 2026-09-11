@@ -74,7 +74,7 @@ export default async function RoomDetailsPage({ params }: RoomPageProps) {
               </div>
               <div>
                 <dt>Entry Fee</dt>
-                <dd>{resolvedRoom.entryFee} STT</dd>
+                <dd>{resolvedRoom.entryFee} BOT</dd>
               </div>
               <div>
                 <dt>Max Participants</dt>

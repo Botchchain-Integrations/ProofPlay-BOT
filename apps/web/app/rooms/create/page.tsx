@@ -163,7 +163,7 @@ export default function CreateRoomPage() {
           </div>
 
           <div className="field">
-            <label>Entry Fee (STT)</label>
+            <label>Entry Fee (BOT)</label>
             <input
               type="number"
               value={entryFee}

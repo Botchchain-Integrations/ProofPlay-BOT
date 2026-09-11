@@ -6,7 +6,7 @@ export default function HomePage() {
 
   return (
     <section className="hero">
-      <h1>Fantasy football rooms settled by Somnia Agents</h1>
+      <h1>Fantasy football rooms settled on BOT Chain</h1>
       <p>
         Create or join single-match rooms, pick 5 players, and settle on-chain with deterministic
         scoring and automatic payouts.
@@ -54,7 +54,7 @@ export default function HomePage() {
       </div>
 
       <p className="footer-note">
-        Demo mode: deterministic match stats keep settlement reliable for presentations.
+        Demo mode: falls back to deterministic demo stats when the live football API is unavailable.
       </p>
     </section>
   );

@@ -8,9 +8,10 @@ const networks: HardhatUserConfig["networks"] = {
   hardhat: {}
 };
 
-if (process.env.SOMNIA_RPC_URL) {
-  networks.somnia = {
-    url: process.env.SOMNIA_RPC_URL,
+if (process.env.BOT_RPC_URL) {
+  networks.botTestnet = {
+    chainId: Number(process.env.BOT_CHAIN_ID ?? 968),
+    url: process.env.BOT_RPC_URL,
     accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : []
   };
 }

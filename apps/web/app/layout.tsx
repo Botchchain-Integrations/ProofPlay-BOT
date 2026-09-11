@@ -7,7 +7,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Proof of Play",
-  description: "Somnia-powered fantasy football rooms"
+  description: "BOT Chain-powered fantasy football rooms"
 };
 
 export default function RootLayout({

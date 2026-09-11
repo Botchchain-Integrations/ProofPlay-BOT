@@ -15,7 +15,7 @@ export function RoomCard({ room, matchLabel }: RoomCardProps) {
       </div>
 
       <p className="room-meta">
-        Entry: {room.entryFee} STT | Max: {room.maxParticipants} | Deadline: {new Date(room.deadline).toLocaleString("en-GB", { timeZone: "UTC" })} UTC
+        Entry: {room.entryFee} BOT | Max: {room.maxParticipants} | Deadline: {new Date(room.deadline).toLocaleString("en-GB", { timeZone: "UTC" })} UTC
       </p>
 
       <div className="btn-row">
