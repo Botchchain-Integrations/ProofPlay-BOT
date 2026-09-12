@@ -4,10 +4,10 @@ import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { isAddress, keccak256, parseEther, toBytes, type Address } from "viem";
-import { useAccount, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import type { Match } from "@proofplay/shared";
 import {
-  contractAddresses,
+  useContractAddresses,
   hasConfiguredAddress,
   LAST_ROOM_ADDRESS_STORAGE_KEY,
   matchRoomFactoryAbi
@@ -27,6 +27,8 @@ function toDateTimeLocalValue(date: Date) {
 }
 
 function CreateRoomForm() {
+  const contractAddresses = useContractAddresses();
+  const chainId = useChainId();
   const { address, isConnected } = useAccount();
   const searchParams = useSearchParams();
   const publicClient = usePublicClient();
@@ -167,7 +169,7 @@ function CreateRoomForm() {
 
     if (!canWriteFactory || !canWriteRegistry) {
       setFormError(
-        "Factory or registry address is not configured. Set NEXT_PUBLIC_FACTORY_ADDRESS and NEXT_PUBLIC_REGISTRY_ADDRESS."
+        "Factory or registry address is not configured for this network."
       );
       return;
     }
@@ -193,7 +195,8 @@ function CreateRoomForm() {
         body: JSON.stringify({
           fixtureId: selectedMatch.id,
           homeTeam: selectedMatch.homeTeam,
-          awayTeam: selectedMatch.awayTeam
+          awayTeam: selectedMatch.awayTeam,
+          chainId
         })
       });
       const seedBody = (await seedResponse.json()) as {

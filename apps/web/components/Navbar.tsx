@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { WalletButton } from "@/components/WalletButton";
+import NetworkToggle from "@/components/NetworkToggle";
 
 const links = [
   { href: "/", label: "Home" },
@@ -24,6 +25,7 @@ export function Navbar() {
         </Link>
 
         <div className="header-actions">
+          <NetworkToggle />
           <nav className="nav">
             {links.map((link) => {
               const active =

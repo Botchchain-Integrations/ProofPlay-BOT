@@ -1,11 +1,47 @@
 import type { Address } from "viem";
+import { botChain, botTestnet } from "@/lib/chains";
+import { useChainId } from "wagmi";
 
 export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 export const LAST_ROOM_ADDRESS_STORAGE_KEY = "proofplay:last-room-address";
+// Cookie key the network toggle writes so server components read the same chain.
+export const CHAIN_COOKIE = "proofplay_chain";
 
+// Per-network deployed contract addresses. Server default is mainnet.
+export const CONTRACT_ADDRESSES: Record<number, { factory: Address; registry: Address }> = {
+  [botChain.id]: {
+    factory: (process.env.NEXT_PUBLIC_MAINNET_FACTORY_ADDRESS ??
+      "0x71601e379643e8dD704991C6dD1FDbD5630C4Ce7") as Address,
+    registry: (process.env.NEXT_PUBLIC_MAINNET_REGISTRY_ADDRESS ??
+      "0x8e77552B64dE07b39fc12dE6f44CdC0bE42F119c") as Address
+  },
+  [botTestnet.id]: {
+    factory: (process.env.NEXT_PUBLIC_TESTNET_FACTORY_ADDRESS ??
+      "0xf6920D45d16c5FAa9eB40753Bb3F16D353355705") as Address,
+    registry: (process.env.NEXT_PUBLIC_TESTNET_REGISTRY_ADDRESS ??
+      "0xE554b684AC83486A1d6f8020D9b92a5181DcdD64") as Address
+  }
+};
+
+export function getContractAddresses(chainId: number) {
+  return CONTRACT_ADDRESSES[chainId] ?? CONTRACT_ADDRESSES[botChain.id];
+}
+
+// Client-side hook: resolves factory/registry on the currently active wagmi chain.
+export function useContractAddresses() {
+  const chainId = useChainId();
+  const addresses = getContractAddresses(chainId);
+  return {
+    factory: addresses.factory,
+    registry: addresses.registry,
+    room: (process.env.NEXT_PUBLIC_ROOM_ADDRESS ?? ZERO_ADDRESS) as Address
+  };
+}
+
+// Back-compat default addresses (mainnet).
 export const contractAddresses = {
-  factory: (process.env.NEXT_PUBLIC_FACTORY_ADDRESS ?? ZERO_ADDRESS) as Address,
-  registry: (process.env.NEXT_PUBLIC_REGISTRY_ADDRESS ?? ZERO_ADDRESS) as Address,
+  factory: getContractAddresses(botChain.id).factory,
+  registry: getContractAddresses(botChain.id).registry,
   room: (process.env.NEXT_PUBLIC_ROOM_ADDRESS ?? ZERO_ADDRESS) as Address
 };
 

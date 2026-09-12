@@ -1,7 +1,7 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { QueryClient } from "@tanstack/react-query";
 import { http } from "wagmi";
-import { appChains, botChain } from "@/lib/chains";
+import { appChains, botChain, botTestnet } from "@/lib/chains";
 
 const walletConnectProjectId =
   process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID ?? "proofplay-dev-project-id";
@@ -12,7 +12,8 @@ export const wagmiConfig = getDefaultConfig({
   chains: appChains,
   ssr: true,
   transports: {
-    [botChain.id]: http(botChain.rpcUrls.default.http[0])
+    [botChain.id]: http(botChain.rpcUrls.default.http[0]),
+    [botTestnet.id]: http(botTestnet.rpcUrls.default.http[0])
   }
 });
 

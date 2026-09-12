@@ -1,8 +1,8 @@
-import type { Address } from "viem";
-import { createPublicClient, createWalletClient, http, keccak256, toBytes } from "viem";
+import { createPublicClient, createWalletClient, http, keccak256, toBytes, type Chain } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import type { Player, PlayerPosition } from "@proofplay/shared";
-import { botChain } from "@/lib/chains";
+import { botChain, botTestnet } from "@/lib/chains";
+import { getContractAddresses } from "@/lib/contracts";
 import { HttpError } from "../http-error";
 import { createFootballProvider } from "../football-api";
 
@@ -11,6 +11,7 @@ import { createFootballProvider } from "../football-api";
 // live fixture can get its real starting-XI pool seeded on-chain on demand.
 
 const POSITION_ENUM: Record<PlayerPosition, number> = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
+const CHAINS: Record<number, Chain> = { [botChain.id]: botChain, [botTestnet.id]: botTestnet };
 
 export const playerRegistryAbi = [
   {
@@ -48,20 +49,16 @@ export type SeedPlayersResult = {
   txHash?: `0x${string}`;
 };
 
-function registryAddress(): Address {
-  const address = process.env.NEXT_PUBLIC_REGISTRY_ADDRESS;
-  if (!address) {
-    throw new HttpError(503, "REGISTRY_NOT_CONFIGURED", "NEXT_PUBLIC_REGISTRY_ADDRESS is not configured.");
-  }
-  return address as Address;
-}
-
 function deployerKey(): `0x${string}` {
   const key = process.env.DEPLOYER_PRIVATE_KEY?.trim();
   if (!key) {
     throw new HttpError(503, "DEPLOYER_NOT_CONFIGURED", "DEPLOYER_PRIVATE_KEY is not configured.");
   }
   return (key.startsWith("0x") ? key : `0x${key}`) as `0x${string}`;
+}
+
+export function resolveChain(chainId?: number) {
+  return CHAINS[chainId ?? botChain.id] ?? botChain;
 }
 
 function deriveMatchId(fixtureId: string, homeTeam: string, awayTeam: string): `0x${string}` {
@@ -75,14 +72,16 @@ export async function ensurePlayersSeeded(input: {
   fixtureId: string;
   homeTeam: string;
   awayTeam: string;
+  chainId?: number;
 }): Promise<SeedPlayersResult> {
-  const registry = registryAddress();
+  const chain = resolveChain(input.chainId);
+  const registry = getContractAddresses(chain.id).registry;
   const account = privateKeyToAccount(deployerKey());
   const matchId = deriveMatchId(input.fixtureId, input.homeTeam, input.awayTeam);
 
   const publicClient = createPublicClient({
-    chain: botChain,
-    transport: http(botChain.rpcUrls.default.http[0])
+    chain,
+    transport: http(chain.rpcUrls.default.http[0])
   });
 
   const existing = (await publicClient.readContract({
@@ -118,8 +117,8 @@ export async function ensurePlayersSeeded(input: {
 
   const walletClient = createWalletClient({
     account,
-    chain: botChain,
-    transport: http(botChain.rpcUrls.default.http[0])
+    chain,
+    transport: http(chain.rpcUrls.default.http[0])
   });
 
   const inputs = players.map((player) => ({

@@ -13,6 +13,7 @@ import {
   getRoomById
 } from "@/lib/demo-data";
 import { readOnChainPlayers } from "@/lib/server/services/registry-read.service";
+import { getActiveChain } from "@/lib/server/network";
 
 type RoomPageProps = {
   params: Promise<{ id: string }>;
@@ -20,10 +21,11 @@ type RoomPageProps = {
 
 export default async function RoomDetailsPage({ params }: RoomPageProps) {
   const { id } = await params;
+  const activeChain = await getActiveChain();
   const routeIsAddress = isAddress(id);
   const room = getRoomById(id);
   const onChainPool = routeIsAddress
-    ? await readOnChainPlayers(id).catch(() => ({ matchId: null as `0x${string}` | null, players: null as Player[] | null }))
+    ? await readOnChainPlayers(id, activeChain.id).catch(() => ({ matchId: null as `0x${string}` | null, players: null as Player[] | null }))
     : { matchId: null as `0x${string}` | null, players: null as Player[] | null };
 
   if (!room && !routeIsAddress) {

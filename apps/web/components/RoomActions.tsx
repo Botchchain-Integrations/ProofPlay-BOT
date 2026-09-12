@@ -11,7 +11,7 @@ import {
   useWriteContract
 } from "wagmi";
 import {
-  contractAddresses,
+  useContractAddresses,
   fantasyMatchRoomAbi,
   hasConfiguredAddress,
   LAST_ROOM_ADDRESS_STORAGE_KEY,
@@ -38,6 +38,7 @@ function shortenAddress(address: Address) {
 
 export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActionsProps) {
   const { isConnected, address } = useAccount();
+  const contractAddresses = useContractAddresses();
 
   const [roomAddressInput, setRoomAddressInput] = useState<string>(() => {
     if (initialRoomAddress && isAddress(initialRoomAddress)) {

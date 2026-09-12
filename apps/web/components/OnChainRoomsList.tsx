@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import type { Room } from "@proofplay/shared";
 import { formatEther, type Address } from "viem";
 import { useReadContract, useReadContracts } from "wagmi";
-import { contractAddresses, fantasyMatchRoomAbi, hasConfiguredAddress, matchRoomFactoryAbi } from "@/lib/contracts";
+import { useContractAddresses, hasConfiguredAddress, fantasyMatchRoomAbi, matchRoomFactoryAbi } from "@/lib/contracts";
 import { getMatchLabel } from "@/lib/demo-data";
 import { RoomCard } from "@/components/RoomCard";
 
@@ -27,6 +27,7 @@ function toIsoDeadline(unixSeconds: bigint) {
 }
 
 export function OnChainRoomsList() {
+  const contractAddresses = useContractAddresses();
   const canReadFactory = hasConfiguredAddress(contractAddresses.factory);
 
   const roomsQuery = useReadContract({
@@ -111,8 +112,8 @@ export function OnChainRoomsList() {
     return (
       <div className="glass-card">
         <p className="meta">
-          Factory contract address is missing. Set <code>NEXT_PUBLIC_FACTORY_ADDRESS</code> to
-          load on-chain rooms.
+          Factory contract address is missing for this network. Switch networks with the toggle
+          in the navbar to load on-chain rooms.
         </p>
       </div>
     );
