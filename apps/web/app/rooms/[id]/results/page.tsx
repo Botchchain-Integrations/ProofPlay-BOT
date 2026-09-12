@@ -15,20 +15,21 @@ export default async function RoomResultsPage({ params }: RoomResultsPageProps) 
 
   if (routeIsAddress) {
     return (
-      <section>
-        <h1 className="section-title">On-Chain Room Results</h1>
-        <p className="meta">Room ID: {id}</p>
-
-        <div style={{ marginTop: "1rem" }}>
-          <OnChainRoomResults roomAddress={id} />
+      <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+        <div className="page-head">
+          <span className="section-header">Results</span>
+          <h1 className="page-head__title">On-Chain Room Results</h1>
+          <p>Room ID: <span className="mono">{id}</span></p>
         </div>
 
-        <div className="btn-row" style={{ marginTop: "1rem" }}>
+        <OnChainRoomResults roomAddress={id} />
+
+        <div className="btn-row">
           <Link className="btn" href={`/rooms/${id}`}>
             Back to room
           </Link>
         </div>
-      </section>
+      </div>
     );
   }
 
@@ -36,13 +37,19 @@ export default async function RoomResultsPage({ params }: RoomResultsPageProps) 
 
   if (!room) {
     return (
-      <section className="card">
-        <h1>Results not found</h1>
-        <p className="meta">No room exists for id: {id}</p>
-        <Link href="/rooms" className="btn">
-          Back to rooms
-        </Link>
-      </section>
+      <div style={{ maxWidth: "36rem" }}>
+        <div className="glass-card">
+          <h1 className="page-title">Results not found</h1>
+          <p className="meta" style={{ marginTop: "0.5rem" }}>
+            No room exists for id: <span className="mono">{id}</span>
+          </p>
+          <div className="btn-row" style={{ marginTop: "1rem" }}>
+            <Link href="/rooms" className="btn">
+              Back to rooms
+            </Link>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -50,20 +57,23 @@ export default async function RoomResultsPage({ params }: RoomResultsPageProps) 
   const receipt = getReceiptForRoom(room.id);
 
   return (
-    <section>
-      <h1 className="section-title">Results: {getMatchLabel(room.matchId)}</h1>
-      <p className="meta">Room ID: {room.id}</p>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <div className="page-head">
+        <span className="section-header">Results</span>
+        <h1 className="page-head__title">{getMatchLabel(room.matchId)}</h1>
+        <p>Room ID: <span className="mono">{room.id}</span></p>
+      </div>
 
       <div className="grid">
         <Leaderboard entries={leaderboard} />
         {receipt ? <ResultReceipt receipt={receipt} /> : null}
       </div>
 
-      <div className="btn-row" style={{ marginTop: "1rem" }}>
+      <div className="btn-row">
         <Link className="btn" href={`/rooms/${room.id}`}>
           Back to room
         </Link>
       </div>
-    </section>
+    </div>
   );
 }

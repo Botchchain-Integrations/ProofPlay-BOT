@@ -5,6 +5,7 @@ import type { Room } from "@proofplay/shared";
 import { formatEther, type Address } from "viem";
 import { useReadContract, useReadContracts } from "wagmi";
 import { contractAddresses, fantasyMatchRoomAbi, hasConfiguredAddress, matchRoomFactoryAbi } from "@/lib/contracts";
+import { getMatchLabel } from "@/lib/demo-data";
 import { RoomCard } from "@/components/RoomCard";
 
 function getReadBigInt(value: unknown) {
@@ -23,10 +24,6 @@ function toIsoDeadline(unixSeconds: bigint) {
   }
 
   return new Date(numeric * 1000).toISOString();
-}
-
-function shortenAddress(address: Address) {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 export function OnChainRoomsList() {
@@ -103,61 +100,60 @@ export function OnChainRoomsList() {
     });
   }, [roomAddresses, roomMetadataQuery.data]);
 
+  const roomLabels = useMemo(() => {
+    return rooms.map((room, index) => {
+      const resolved = getMatchLabel(room.matchId);
+      return resolved === room.matchId ? `On-Chain Room ${index + 1}` : resolved;
+    });
+  }, [rooms]);
+
   if (!canReadFactory) {
     return (
-      <article className="card" style={{ marginTop: "1rem" }}>
+      <div className="glass-card">
         <p className="meta">
           Factory contract address is missing. Set <code>NEXT_PUBLIC_FACTORY_ADDRESS</code> to
           load on-chain rooms.
         </p>
-      </article>
+      </div>
     );
   }
 
   if (roomsQuery.isLoading || roomMetadataQuery.isLoading) {
     return (
-      <article className="card" style={{ marginTop: "1rem" }}>
-        <p className="meta">Loading on-chain rooms...</p>
-      </article>
+      <div className="loading-wrap">
+        <div className="spinner" />
+      </div>
     );
   }
 
   if (roomsQuery.error) {
     return (
-      <article className="card" style={{ marginTop: "1rem" }}>
-        <p className="meta" style={{ color: "#b42318" }}>
-          Failed to read factory rooms: {roomsQuery.error.message}
-        </p>
-      </article>
+      <div className="glass-card">
+        <p className="error-msg">Failed to read factory rooms: {roomsQuery.error.message}</p>
+      </div>
     );
   }
 
   if (roomMetadataQuery.error) {
     return (
-      <article className="card" style={{ marginTop: "1rem" }}>
-        <p className="meta" style={{ color: "#b42318" }}>
-          Failed to read room metadata: {roomMetadataQuery.error.message}
-        </p>
-      </article>
+      <div className="glass-card">
+        <p className="error-msg">Failed to read room metadata: {roomMetadataQuery.error.message}</p>
+      </div>
     );
   }
 
   if (rooms.length === 0) {
     return (
-      <article className="card" style={{ marginTop: "1rem" }}>
+      <div className="empty-state">
         <p className="meta">No on-chain rooms found yet. Create one from the room creation page.</p>
-      </article>
+      </div>
     );
   }
 
   return (
-    <div className="list" style={{ marginTop: "1rem" }}>
+    <div className="list">
       {rooms.map((room, index) => (
-        <RoomCard
-          key={room.id}
-          room={room}
-          matchLabel={`On-Chain Room ${index + 1} (${shortenAddress(room.id as Address)})`}
-        />
+        <RoomCard key={room.id} room={room} matchLabel={roomLabels[index] ?? `On-Chain Room ${index + 1}`} />
       ))}
     </div>
   );

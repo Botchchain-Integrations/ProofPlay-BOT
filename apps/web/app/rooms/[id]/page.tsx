@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { Room } from "@proofplay/shared";
+import type { Player, Room } from "@proofplay/shared";
 import { isAddress } from "viem";
 import { LineupCard } from "@/components/LineupCard";
 import { OnChainRoomStatus } from "@/components/OnChainRoomStatus";
@@ -12,6 +12,7 @@ import {
   getPlayersForMatch,
   getRoomById
 } from "@/lib/demo-data";
+import { readOnChainPlayers } from "@/lib/server/services/registry-read.service";
 
 type RoomPageProps = {
   params: Promise<{ id: string }>;
@@ -21,16 +22,25 @@ export default async function RoomDetailsPage({ params }: RoomPageProps) {
   const { id } = await params;
   const routeIsAddress = isAddress(id);
   const room = getRoomById(id);
+  const onChainPool = routeIsAddress
+    ? await readOnChainPlayers(id).catch(() => ({ matchId: null as `0x${string}` | null, players: null as Player[] | null }))
+    : { matchId: null as `0x${string}` | null, players: null as Player[] | null };
 
   if (!room && !routeIsAddress) {
     return (
-      <section className="card">
-        <h1>Room not found</h1>
-        <p className="meta">No room exists for id: {id}</p>
-        <Link href="/rooms" className="btn">
-          Back to rooms
-        </Link>
-      </section>
+      <div style={{ maxWidth: "36rem" }}>
+        <div className="glass-card">
+          <h1 className="page-title">Room not found</h1>
+          <p className="meta" style={{ marginTop: "0.5rem" }}>
+            No room exists for id: <span className="mono">{id}</span>
+          </p>
+          <div className="btn-row" style={{ marginTop: "1rem" }}>
+            <Link href="/rooms" className="btn">
+              Back to rooms
+            </Link>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -45,47 +55,64 @@ export default async function RoomDetailsPage({ params }: RoomPageProps) {
       status: "open"
     } as const);
 
-  const players = getPlayersForMatch(resolvedRoom.matchId);
+  const players =
+    onChainPool.players ??
+    getPlayersForMatch(resolvedRoom.matchId);
   const lineups = room ? getLineupsForRoom(room.id) : [];
   const previewLineup = lineups[0];
 
   return (
-    <section>
-      <h1 className="section-title">
-        {room ? getMatchLabel(room.matchId) : "On-Chain Fantasy Room"}
-      </h1>
-      <p className="meta">Room ID: {resolvedRoom.id}</p>
-      {!room && routeIsAddress ? (
-        <p className="meta" style={{ marginTop: "0.35rem" }}>
-          This page is using a room contract address route and on-chain actions.
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <div className="page-head">
+        <span className="section-header">Match Room</span>
+        <h1 className="page-title" style={{ marginTop: "0.25rem" }}>
+          {room ? getMatchLabel(room.matchId) : "On-Chain Fantasy Room"}
+        </h1>
+        <p style={{ marginTop: "0.4rem" }}>
+          Room ID: <span className="mono">{resolvedRoom.id}</span>
         </p>
-      ) : null}
+        {!room && routeIsAddress ? (
+          <p className="meta" style={{ marginTop: "0.35rem" }}>
+            This page is using a room contract address route and on-chain actions.
+            {onChainPool.players && onChainPool.players.length > 0 ? (
+              <span className="mono" style={{ display: "block", marginTop: "0.3rem" }}>
+                Seeded pool: {onChainPool.players.length} players on-chain.
+              </span>
+            ) : onChainPool.players === null && routeIsAddress ? (
+              <span className="mono" style={{ display: "block", marginTop: "0.3rem" }}>
+                Could not read the on-chain player pool.
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+      </div>
 
       <div className="grid">
         {routeIsAddress ? (
           <OnChainRoomStatus roomAddress={id} />
         ) : (
-          <article className="card">
-            <h2 className="section-title">Room Status</h2>
-            <dl className="kv">
-              <div>
-                <dt>Status</dt>
-                <dd>{resolvedRoom.status}</dd>
-              </div>
-              <div>
+          <div className="glass-card">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.9rem" }}>
+              <h2 className="section-title" style={{ margin: 0 }}>
+                Room Status
+              </h2>
+              <span className={`pill ${resolvedRoom.status}`}>{resolvedRoom.status.toUpperCase()}</span>
+            </div>
+            <dl className="kv-grid">
+              <div className="kv-item">
                 <dt>Entry Fee</dt>
                 <dd>{resolvedRoom.entryFee} BOT</dd>
               </div>
-              <div>
+              <div className="kv-item">
                 <dt>Max Participants</dt>
                 <dd>{resolvedRoom.maxParticipants}</dd>
               </div>
-              <div>
+              <div className="kv-item">
                 <dt>Lineup Deadline</dt>
-                <dd>{new Date(resolvedRoom.deadline).toLocaleString("en-GB", { timeZone: "UTC" })} UTC</dd>
+                <dd className="mono">{new Date(resolvedRoom.deadline).toLocaleString("en-GB", { timeZone: "UTC" })} UTC</dd>
               </div>
             </dl>
-          </article>
+          </div>
         )}
 
         <RoomActions
@@ -95,21 +122,15 @@ export default async function RoomDetailsPage({ params }: RoomPageProps) {
         />
       </div>
 
-      <div style={{ marginTop: "1rem" }}>
-        <PlayerPicker
-          players={players}
-          selectedIds={previewLineup?.playerIds ?? []}
-          captainId={previewLineup?.captainId}
-        />
-      </div>
+      <PlayerPicker
+        players={players}
+        selectedIds={previewLineup?.playerIds ?? []}
+        captainId={previewLineup?.captainId}
+      />
 
-      {previewLineup ? (
-        <div style={{ marginTop: "1rem" }}>
-          <LineupCard lineup={previewLineup} players={players} />
-        </div>
-      ) : null}
+      {previewLineup ? <LineupCard lineup={previewLineup} players={players} /> : null}
 
-      <div className="btn-row" style={{ marginTop: "1rem" }}>
+      <div className="btn-row">
         <Link className="btn ghost" href={`/rooms/${resolvedRoom.id}/results`}>
           View Results Page
         </Link>
@@ -117,6 +138,6 @@ export default async function RoomDetailsPage({ params }: RoomPageProps) {
           Creator Settle Helper
         </Link>
       </div>
-    </section>
+    </div>
   );
 }

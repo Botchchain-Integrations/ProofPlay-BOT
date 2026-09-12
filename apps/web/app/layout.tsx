@@ -1,12 +1,17 @@
 import "@rainbow-me/rainbowkit/styles.css";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { WalletButton } from "@/components/WalletButton";
+import { Sora } from "next/font/google";
+import { Navbar } from "@/components/Navbar";
 import { Web3Provider } from "@/components/providers/Web3Provider";
 import "./globals.css";
 
+const sora = Sora({
+  subsets: ["latin"],
+  variable: "--font-sora"
+});
+
 export const metadata: Metadata = {
-  title: "Proof of Play",
+  title: "ProofPlay Fantasy",
   description: "BOT Chain-powered fantasy football rooms"
 };
 
@@ -16,27 +21,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" className={sora.variable}>
+      <body className="antialiased" style={{ fontFamily: "var(--font-sora), sans-serif" }}>
         <Web3Provider>
           <div className="app-shell">
-            <header className="site-header">
-              <Link href="/" className="brand">
-                <span className="brand-badge">PoP</span>
-                <span>Proof of Play</span>
-              </Link>
-
-              <div className="header-actions">
-                <nav className="nav">
-                  <Link href="/">Home</Link>
-                  <Link href="/rooms">Rooms</Link>
-                  <Link href="/rooms/create">Create Room</Link>
-                </nav>
-                <WalletButton />
-              </div>
-            </header>
-
-            <main>{children}</main>
+            <Navbar />
+            <main className="page">{children}</main>
           </div>
         </Web3Provider>
       </body>

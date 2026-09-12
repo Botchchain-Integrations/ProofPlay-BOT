@@ -32,6 +32,10 @@ function normalizeAddress(value: string): Address {
   return ZERO_ADDRESS;
 }
 
+function shortenAddress(address: Address) {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActionsProps) {
   const { isConnected, address } = useAccount();
 
@@ -76,7 +80,7 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
     if (isAddress(roomAddressInput)) {
       window.localStorage.setItem(LAST_ROOM_ADDRESS_STORAGE_KEY, roomAddressInput);
     }
-  }, [roomAddressInput]);
+  }, [roomAddressInput, address]);
 
   const roomAddress = useMemo(() => normalizeAddress(roomAddressInput), [roomAddressInput]);
   const roomConfigured = hasConfiguredAddress(roomAddress);
@@ -413,11 +417,16 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
   }
 
   return (
-    <article className="card">
-      <h2 className="section-title">On-Chain Room Actions</h2>
-      <p className="meta">Join room and submit lineup against the deployed `FantasyMatchRoom` contract.</p>
+    <div className="glass-card">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.35rem" }}>
+        <h2 className="section-title" style={{ margin: 0 }}>
+          On-Chain Actions
+        </h2>
+        <span className="badge badge-cyan">BOT Chain</span>
+      </div>
+      <p className="meta">Join, submit your lineup, and settle against the FantasyMatchRoom contract.</p>
 
-      <div className="field" style={{ marginTop: "0.85rem" }}>
+      <div className="field" style={{ marginTop: "1rem" }}>
         <label>Room Contract Address</label>
         <input
           value={roomAddressInput}
@@ -426,35 +435,76 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
         />
       </div>
 
-      <div className="btn-row" style={{ marginTop: "0.85rem" }}>
+      {roomConfigured ? (
+        <div className="kv-grid" style={{ marginTop: "0.75rem" }}>
+          <div className="kv-item">
+            <dt>Status</dt>
+            <dd>
+              <span className={`pill ${settled ? "settled" : locked ? "locked" : "open"}`}>
+                {(settled ? "settled" : locked ? "locked" : "open").toUpperCase()}
+              </span>
+            </dd>
+          </div>
+          <div className="kv-item">
+            <dt>Entry Fee</dt>
+            <dd>{joinEntryFeeLabel} BOT</dd>
+          </div>
+          <div className="kv-item">
+            <dt>Room Fill</dt>
+            <dd>
+              {participants.length}/{Number(maxParticipants)}
+            </dd>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="btn-row" style={{ marginTop: "0.9rem" }}>
         <button className="btn primary" type="button" onClick={handleJoinRoom} disabled={!canJoin}>
           {joinButtonLabel}
         </button>
       </div>
 
-      <div style={{ marginTop: "0.85rem" }}>
-        <h3 style={{ margin: "0 0 0.45rem 0" }}>Lineup Selection (Pick 5)</h3>
-        <div className="player-chip-wrap">
-          {players.map((player) => {
-            const selected = selectedPlayerIds.includes(player.id);
-
-            return (
-              <button
-                key={player.id}
-                className={`player-chip ${selected ? "is-selected" : ""}`}
-                type="button"
-                onClick={() => togglePlayer(player.id)}
-              >
-                <strong>{player.name}</strong>
-                <span>
-                  {player.position} | {player.team}
-                </span>
-              </button>
-            );
-          })}
+      <div style={{ marginTop: "1.1rem" }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.6rem" }}>
+          <h3 style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 700, color: "var(--zinc-300)" }}>
+            Lineup Selection (Pick 5)
+          </h3>
+          <span className="mono" style={{ fontSize: "0.6875rem", color: "var(--green)" }}>
+            {selectedPlayerIds.length}/5 selected
+          </span>
         </div>
 
-        <div className="field" style={{ marginTop: "0.85rem" }}>
+        {players.length > 0 ? (
+          <div className="player-chip-wrap">
+            {players.map((player) => {
+              const selected = selectedPlayerIds.includes(player.id);
+              const captain = selected && Number(captainId) === player.id;
+
+              return (
+                <button
+                  key={player.id}
+                  className={`player-chip ${selected ? "is-selected" : ""} ${captain ? "is-captain" : ""}`}
+                  type="button"
+                  onClick={() => togglePlayer(player.id)}
+                >
+                  <strong>{player.name}</strong>
+                  <span>
+                    {player.position} · {player.team}
+                  </span>
+                  {captain ? <em>Captain</em> : null}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="glass" style={{ padding: "0.75rem", borderRadius: "0.5rem" }}>
+            <p className="meta" style={{ fontSize: "0.8125rem" }}>
+              No player pool loaded for this match.
+            </p>
+          </div>
+        )}
+
+        <div className="field" style={{ marginTop: "0.85rem", maxWidth: "18rem" }}>
           <label>Captain</label>
           <select value={captainId} onChange={(event) => setCaptainId(event.target.value)}>
             <option value="">Select captain</option>
@@ -462,14 +512,18 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
               const player = players.find((item) => item.id === playerId);
               return (
                 <option key={playerId} value={playerId}>
-                  {player?.name ?? `Player ${playerId}`}
+                  {player ? `${player.name} (${player.position})` : `Player ${playerId}`}
                 </option>
               );
             })}
           </select>
         </div>
 
-        <div className="btn-row" style={{ marginTop: "0.85rem" }}>
+        <p className="chip-caption">
+          Formation 1 GK · 1 DEF · 2 MID · 1 FWD. Captain scores double.
+        </p>
+
+        <div className="btn-row" style={{ marginTop: "0.7rem" }}>
           <button
             className="btn"
             type="button"
@@ -480,7 +534,7 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
           </button>
         </div>
 
-        <div className="btn-row" style={{ marginTop: "0.85rem" }}>
+        <div className="btn-row" style={{ marginTop: "0.7rem" }}>
           <button className="btn" type="button" onClick={handleLockRoom} disabled={!canLock}>
             {lockButtonLabel}
           </button>
@@ -492,58 +546,63 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
           >
             {requestSettlementButtonLabel}
           </button>
-          <button className="btn" type="button" onClick={handleClaimPrize} disabled={!canClaim}>
+          <button
+            className={`btn ${canClaim ? "primary" : ""}`}
+            type="button"
+            onClick={handleClaimPrize}
+            disabled={!canClaim}
+          >
             {claimButtonLabel}
           </button>
         </div>
       </div>
 
-      <div style={{ marginTop: "0.85rem" }}>
-        {formError ? <p className="meta" style={{ color: "#b42318" }}>{formError}</p> : null}
-        {joinMutation.error ? <p className="meta" style={{ color: "#b42318" }}>{joinMutation.error.message}</p> : null}
-        {submitMutation.error ? (
-          <p className="meta" style={{ color: "#b42318" }}>{submitMutation.error.message}</p>
-        ) : null}
-        {lockMutation.error ? <p className="meta" style={{ color: "#b42318" }}>{lockMutation.error.message}</p> : null}
+      <div style={{ marginTop: "1.1rem", display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+        {formError ? <p className="error-msg">{formError}</p> : null}
+        {joinMutation.error ? <p className="error-msg">{joinMutation.error.message}</p> : null}
+        {submitMutation.error ? <p className="error-msg">{submitMutation.error.message}</p> : null}
+        {lockMutation.error ? <p className="error-msg">{lockMutation.error.message}</p> : null}
         {requestSettlementMutation.error ? (
-          <p className="meta" style={{ color: "#b42318" }}>{requestSettlementMutation.error.message}</p>
+          <p className="error-msg">{requestSettlementMutation.error.message}</p>
         ) : null}
-        {claimMutation.error ? <p className="meta" style={{ color: "#b42318" }}>{claimMutation.error.message}</p> : null}
+        {claimMutation.error ? <p className="error-msg">{claimMutation.error.message}</p> : null}
         {roomEntryFeeQuery.error ? (
-          <p className="meta" style={{ color: "#b42318" }}>
-            Failed to read room entry fee: {roomEntryFeeQuery.error.message}
-          </p>
+          <p className="error-msg">Failed to read room entry fee: {roomEntryFeeQuery.error.message}</p>
         ) : null}
         {roomStateQuery.error ? (
-          <p className="meta" style={{ color: "#b42318" }}>
-            Failed to read room state: {roomStateQuery.error.message}
-          </p>
+          <p className="error-msg">Failed to read room state: {roomStateQuery.error.message}</p>
         ) : null}
         {userLineupQuery.error ? (
-          <p className="meta" style={{ color: "#b42318" }}>
-            Failed to read your lineup state: {userLineupQuery.error.message}
+          <p className="error-msg">Failed to read your lineup state: {userLineupQuery.error.message}</p>
+        ) : null}
+
+        {joinMutation.data ? <p className="tx-line">Join tx: {joinMutation.data}</p> : null}
+        {submitMutation.data ? <p className="tx-line">Lineup tx: {submitMutation.data}</p> : null}
+        {lockMutation.data ? <p className="tx-line">Lock tx: {lockMutation.data}</p> : null}
+        {requestSettlementMutation.data ? (
+          <p className="tx-line">Settlement request tx: {requestSettlementMutation.data}</p>
+        ) : null}
+        {claimMutation.data ? <p className="tx-line">Claim tx: {claimMutation.data}</p> : null}
+
+        {joinReceipt.isLoading ? <p className="tx-line">Waiting on join confirmation...</p> : null}
+        {joinReceipt.isSuccess ? <p className="success-msg">Join confirmed.</p> : null}
+        {submitReceipt.isLoading ? <p className="tx-line">Waiting on lineup confirmation...</p> : null}
+        {submitReceipt.isSuccess ? <p className="success-msg">Lineup confirmed.</p> : null}
+        {lockReceipt.isLoading ? <p className="tx-line">Waiting on lock confirmation...</p> : null}
+        {lockReceipt.isSuccess ? <p className="success-msg">Room locked.</p> : null}
+        {requestSettlementReceipt.isLoading ? (
+          <p className="tx-line">Waiting on settlement request confirmation...</p>
+        ) : null}
+        {requestSettlementReceipt.isSuccess ? <p className="success-msg">Settlement requested.</p> : null}
+        {claimReceipt.isLoading ? <p className="tx-line">Waiting on claim confirmation...</p> : null}
+        {claimReceipt.isSuccess ? <p className="success-msg">Prize claimed.</p> : null}
+
+        {address ? (
+          <p className="tx-line" style={{ color: "var(--zinc-600)" }}>
+            You: {shortenAddress(address)}
           </p>
         ) : null}
-        {joinMutation.data ? <p className="meta">Join tx: {joinMutation.data}</p> : null}
-        {submitMutation.data ? <p className="meta">Lineup tx: {submitMutation.data}</p> : null}
-        {lockMutation.data ? <p className="meta">Lock tx: {lockMutation.data}</p> : null}
-        {requestSettlementMutation.data ? (
-          <p className="meta">Settlement request tx: {requestSettlementMutation.data}</p>
-        ) : null}
-        {claimMutation.data ? <p className="meta">Claim tx: {claimMutation.data}</p> : null}
-        {joinReceipt.isLoading ? <p className="meta">Waiting on join confirmation...</p> : null}
-        {joinReceipt.isSuccess ? <p className="meta">Join confirmed.</p> : null}
-        {submitReceipt.isLoading ? <p className="meta">Waiting on lineup confirmation...</p> : null}
-        {submitReceipt.isSuccess ? <p className="meta">Lineup confirmed.</p> : null}
-        {lockReceipt.isLoading ? <p className="meta">Waiting on lock confirmation...</p> : null}
-        {lockReceipt.isSuccess ? <p className="meta">Room locked.</p> : null}
-        {requestSettlementReceipt.isLoading ? (
-          <p className="meta">Waiting on settlement request confirmation...</p>
-        ) : null}
-        {requestSettlementReceipt.isSuccess ? <p className="meta">Settlement requested.</p> : null}
-        {claimReceipt.isLoading ? <p className="meta">Waiting on claim confirmation...</p> : null}
-        {claimReceipt.isSuccess ? <p className="meta">Prize claimed.</p> : null}
       </div>
-    </article>
+    </div>
   );
 }

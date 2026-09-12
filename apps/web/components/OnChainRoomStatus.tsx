@@ -34,23 +34,25 @@ function formatDeadline(unixSeconds: bigint) {
   return `${new Date(numeric * 1000).toLocaleString("en-GB", { timeZone: "UTC" })} UTC`;
 }
 
+function shortenAddress(address: Address) {
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
 function formatWinner(winner: Address | null) {
   if (!winner || winner.toLowerCase() === ZERO_ADDRESS.toLowerCase()) {
     return "--";
   }
 
-  return winner;
+  return shortenAddress(winner);
 }
 
 export function OnChainRoomStatus({ roomAddress }: OnChainRoomStatusProps) {
   if (!isAddress(roomAddress)) {
     return (
-      <article className="card">
+      <div className="glass-card">
         <h2 className="section-title">Room Status</h2>
-        <p className="meta" style={{ color: "#b42318" }}>
-          Invalid room address route.
-        </p>
-      </article>
+        <p className="error-msg">Invalid room address route.</p>
+      </div>
     );
   }
 
@@ -103,21 +105,21 @@ export function OnChainRoomStatus({ roomAddress }: OnChainRoomStatusProps) {
 
   if (roomStateQuery.isLoading) {
     return (
-      <article className="card">
+      <div className="glass-card">
         <h2 className="section-title">Room Status</h2>
-        <p className="meta">Loading on-chain room state...</p>
-      </article>
+        <div className="loading-wrap" style={{ padding: "1.5rem" }}>
+          <div className="spinner" />
+        </div>
+      </div>
     );
   }
 
   if (roomStateQuery.error) {
     return (
-      <article className="card">
+      <div className="glass-card">
         <h2 className="section-title">Room Status</h2>
-        <p className="meta" style={{ color: "#b42318" }}>
-          Failed to read room status: {roomStateQuery.error.message}
-        </p>
-      </article>
+        <p className="error-msg">Failed to read room status: {roomStateQuery.error.message}</p>
+      </div>
     );
   }
 
@@ -133,36 +135,38 @@ export function OnChainRoomStatus({ roomAddress }: OnChainRoomStatusProps) {
   const status = settled ? "settled" : locked ? "locked" : "open";
 
   return (
-    <article className="card">
-      <h2 className="section-title">Room Status</h2>
-      <dl className="kv">
-        <div>
-          <dt>Status</dt>
-          <dd>{status}</dd>
-        </div>
-        <div>
+    <div className="glass-card">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.9rem" }}>
+        <h2 className="section-title" style={{ margin: 0 }}>
+          Room Status
+        </h2>
+        <span className={`pill ${status}`}>{status.toUpperCase()}</span>
+      </div>
+
+      <dl className="kv-grid">
+        <div className="kv-item">
           <dt>Entry Fee</dt>
           <dd>{formatEther(entryFee)} BOT</dd>
         </div>
-        <div>
+        <div className="kv-item">
           <dt>Participants</dt>
           <dd>
             {participants.length}/{Number(maxParticipants)}
           </dd>
         </div>
-        <div>
+        <div className="kv-item">
           <dt>Lineup Deadline</dt>
-          <dd>{formatDeadline(lineupDeadline)}</dd>
+          <dd className="mono">{formatDeadline(lineupDeadline)}</dd>
         </div>
-        <div>
+        <div className="kv-item">
           <dt>Winner</dt>
-          <dd>{formatWinner(winner)}</dd>
+          <dd className="mono">{formatWinner(winner)}</dd>
         </div>
-        <div>
+        <div className="kv-item">
           <dt>Payout</dt>
-          <dd>{payoutComplete ? "claimed" : settled ? "pending claim" : "not ready"}</dd>
+          <dd>{payoutComplete ? "Claimed" : settled ? "Pending claim" : "Not ready"}</dd>
         </div>
       </dl>
-    </article>
+    </div>
   );
 }

@@ -65,7 +65,7 @@ export const demoRooms: Room[] = [
 ];
 
 export const demoPlayersByMatch: Record<string, Player[]> = {
-  // Seeded on BOT Chain Testnet PlayerRegistry for fixture 812679:Arsenal:Chelsea
+  // Seeded on BOT Chain mainnet PlayerRegistry for fixture 812679:Arsenal:Chelsea
   // (Arsenal 2-1 Chelsea, played 2026-09-06). Ids must match the registry pool.
   "812679": [
     { id: 1, name: "David Raya", team: "Arsenal", position: "GK" },

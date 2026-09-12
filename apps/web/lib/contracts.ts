@@ -39,6 +39,13 @@ export const matchRoomFactoryAbi = [
 export const fantasyMatchRoomAbi = [
   {
     type: "function",
+    stateMutability: "view",
+    name: "matchId",
+    inputs: [],
+    outputs: [{ name: "", type: "bytes32" }]
+  },
+  {
+    type: "function",
     stateMutability: "payable",
     name: "joinRoom",
     inputs: [],
@@ -158,5 +165,37 @@ export const fantasyMatchRoomAbi = [
     name: "getLineup",
     inputs: [{ name: "participant", type: "address" }],
     outputs: [{ name: "", type: "uint256[]" }]
+  }
+] as const;
+
+export const playerRegistryAbi = [
+  {
+    type: "function",
+    stateMutability: "view",
+    name: "getMatchPlayerIds",
+    inputs: [{ name: "matchId", type: "bytes32" }],
+    outputs: [{ name: "", type: "uint256[]" }]
+  },
+  {
+    type: "function",
+    stateMutability: "view",
+    name: "getPlayer",
+    inputs: [
+      { name: "matchId", type: "bytes32" },
+      { name: "playerId", type: "uint256" }
+    ],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          { name: "id", type: "uint256" },
+          { name: "name", type: "string" },
+          { name: "team", type: "string" },
+          { name: "position", type: "uint8" },
+          { name: "active", type: "bool" },
+          { name: "exists", type: "bool" }
+        ]
+      }
+    ]
   }
 ] as const;

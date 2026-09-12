@@ -1,12 +1,12 @@
 import { defineChain } from "viem";
 
-const botChainId = Number(process.env.NEXT_PUBLIC_BOT_CHAIN_ID ?? "968");
-const botRpcUrl = process.env.NEXT_PUBLIC_BOT_RPC_URL ?? "https://rpc.bohr.life";
-const botExplorerUrl = process.env.NEXT_PUBLIC_BOT_EXPLORER_URL ?? "https://scan.bohr.life";
+const botChainId = Number(process.env.NEXT_PUBLIC_BOT_CHAIN_ID ?? "677");
+const botRpcUrl = process.env.NEXT_PUBLIC_BOT_RPC_URL ?? "https://rpc.botchain.ai";
+const botExplorerUrl = process.env.NEXT_PUBLIC_BOT_EXPLORER_URL ?? "https://scan.botchain.ai";
 
-export const botTestnet = defineChain({
+export const botChain = defineChain({
   id: botChainId,
-  name: "BOT Chain Testnet",
+  name: "BOT Chain",
   nativeCurrency: {
     name: "BOT",
     symbol: "BOT",
@@ -25,4 +25,4 @@ export const botTestnet = defineChain({
   }
 });
 
-export const appChains = [botTestnet] as const;
+export const appChains = [botChain] as const;

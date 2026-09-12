@@ -6,8 +6,14 @@ type ResultReceiptProps = {
 
 export function ResultReceipt({ receipt }: ResultReceiptProps) {
   return (
-    <article className="card">
-      <h2 className="section-title">AI Receipt</h2>
+    <div className="glass-card">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+        <h2 className="section-title" style={{ margin: 0 }}>
+          Settlement Receipt
+        </h2>
+        <span className="badge badge-cyan">Verifiable Result</span>
+      </div>
+
       <p className="receipt">{receipt.text}</p>
 
       <dl className="kv" style={{ marginTop: "1rem" }}>
@@ -17,13 +23,13 @@ export function ResultReceipt({ receipt }: ResultReceiptProps) {
         </div>
         <div>
           <dt>Winner Wallet</dt>
-          <dd>{receipt.winnerWallet}</dd>
+          <dd className="mono" style={{ fontSize: "0.8125rem" }}>{receipt.winnerWallet}</dd>
         </div>
         <div>
           <dt>Payout Tx</dt>
-          <dd>{receipt.payoutTx}</dd>
+          <dd className="mono" style={{ fontSize: "0.8125rem" }}>{receipt.payoutTx}</dd>
         </div>
       </dl>
-    </article>
+    </div>
   );
 }

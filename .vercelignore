@@ -1,0 +1,9 @@
+.git
+.git/**
+node_modules
+.next
+contracts/artifacts
+contracts/cache
+solana/target
+solana/target/**
+*.tsbuildinfo
