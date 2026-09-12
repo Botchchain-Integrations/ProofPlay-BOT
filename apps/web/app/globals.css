@@ -87,6 +87,42 @@ code {
   padding: 0 1rem;
 }
 
+.network-toggle {
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+}
+
+.network-toggle__button {
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  font: 600 10px/1 var(--font-sora), sans-serif;
+  letter-spacing: 0.06em;
+  padding: 8px 11px;
+  transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.network-toggle__button:hover {
+  color: #fff;
+}
+
+.network-toggle__button.is-active {
+  background: #15dcac;
+  box-shadow: 0 0 12px rgba(21, 220, 172, 0.35);
+  color: #000;
+}
+
+.network-toggle__button.is-active.is-testnet {
+  background: #10a37f;
+}
+
 .brand {
   display: inline-flex;
   align-items: center;

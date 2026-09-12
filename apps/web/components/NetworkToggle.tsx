@@ -53,7 +53,7 @@ export default function NetworkToggle() {
 
   return (
     <div
-      className="flex items-center rounded-lg border border-white/10 bg-black/30 p-0.5 text-[11px] font-semibold"
+      className="network-toggle"
       role="group"
       aria-label="Select network"
     >
@@ -62,8 +62,8 @@ export default function NetworkToggle() {
           key={option.id}
           type="button"
           onClick={() => handleSelect(option.id)}
-          className={`px-2.5 py-1 rounded-md transition-all text-white/60 hover:text-white ${
-            activeChainId === option.id ? option.activeClass : ""
+          className={`network-toggle__button ${activeChainId === option.id ? "is-active" : ""} ${
+            option.id === botTestnet.id ? "is-testnet" : "is-mainnet"
           }`}
         >
           {option.label}
