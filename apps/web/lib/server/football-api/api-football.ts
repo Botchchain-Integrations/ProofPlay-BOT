@@ -165,6 +165,10 @@ async function getSquadPositions(leagueId: string): Promise<Map<string, string>>
   return map;
 }
 
+async function getSquadPlayers(leagueId: string): Promise<ApiTeam[]> {
+  return apiGet<ApiTeam[]>({ action: "get_teams", league_id: leagueId });
+}
+
 async function getEvent(matchId: string): Promise<ApiEvent> {
   const events = await apiGet<ApiEvent[]>({ action: "get_events", match_id: matchId, timezone: "UTC" });
   if (!Array.isArray(events) || events.length === 0) {
@@ -216,6 +220,30 @@ async function getPlayerPool(matchId: string): Promise<PlayerPool> {
     ...starters("home").map((p) => ({ ...p, team: event.match_hometeam_name })),
     ...starters("away").map((p) => ({ ...p, team: event.match_awayteam_name }))
   ];
+
+  // Upcoming fixtures often have no starting XI yet. Use the current squad
+  // roster as a stable player pool so rooms can be created before kickoff.
+  if (rows.length === 0) {
+    const squads = await getSquadPlayers(leagueId);
+    const targetTeams = new Map([
+      [event.match_hometeam_name.toLowerCase(), event.match_hometeam_name],
+      [event.match_awayteam_name.toLowerCase(), event.match_awayteam_name]
+    ]);
+
+    for (const squad of squads) {
+      const teamName = targetTeams.get(squad.team_name.toLowerCase());
+      if (!teamName) continue;
+      for (const player of squad.players ?? []) {
+        rows.push({
+          lineup_player: player.player_name,
+          lineup_number: "",
+          lineup_position: player.player_type,
+          player_key: player.player_key,
+          team: teamName
+        });
+      }
+    }
+  }
 
   if (rows.length === 0) {
     throw new HttpError(404, "MATCH_NOT_FOUND", `No lineup data for match: ${matchId}`);
