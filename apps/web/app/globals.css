@@ -87,6 +87,15 @@ code {
   padding: 0 1rem;
 }
 
+.proof-footer { border-top: 1px solid rgba(255, 255, 255, 0.08); color: rgba(255, 255, 255, 0.55); display: grid; gap: 0.65rem; margin: 0 auto; max-width: 1080px; padding: 1rem; width: 100%; }
+.proof-footer__title { color: #15dcac; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+.proof-footer__grid { display: grid; gap: 0.75rem; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); }
+.proof-footer__grid div { display: grid; gap: 0.25rem; min-width: 0; }
+.proof-footer__grid span { color: rgba(255, 255, 255, 0.38); font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; }
+.proof-footer__grid strong, .proof-footer__grid code { color: rgba(255, 255, 255, 0.8); font-size: 0.65rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proof-footer a { color: #a4ef6b; font-size: 0.65rem; justify-self: start; }
+@media (max-width: 640px) { .proof-footer__grid { grid-template-columns: 1fr; } }
+
 .network-toggle {
   align-items: center;
   background: rgba(0, 0, 0, 0.3);

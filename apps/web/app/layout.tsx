@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Sora } from "next/font/google";
 import { Navbar } from "@/components/Navbar";
 import { Web3Provider } from "@/components/providers/Web3Provider";
+import { ProofFooter } from "@/components/ProofFooter";
 import "./globals.css";
 
 const sora = Sora({
@@ -27,6 +28,7 @@ export default function RootLayout({
           <div className="app-shell">
             <Navbar />
             <main className="page">{children}</main>
+            <ProofFooter />
           </div>
         </Web3Provider>
       </body>
