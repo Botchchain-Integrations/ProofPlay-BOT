@@ -169,6 +169,25 @@ async function getSquadPlayers(leagueId: string): Promise<ApiTeam[]> {
   return apiGet<ApiTeam[]>({ action: "get_teams", league_id: leagueId });
 }
 
+function normalizeTeamName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\butd\b/g, "united")
+    .replace(/\bath\b/g, "athletic")
+    .replace(/\bdep\.?\b/g, "deportivo")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(afc|fc)\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function teamNamesMatch(fixtureName: string, squadName: string): boolean {
+  const fixture = normalizeTeamName(fixtureName);
+  const squad = normalizeTeamName(squadName);
+  if (fixture === squad) return true;
+  return fixture.startsWith(`${squad} `) || squad.startsWith(`${fixture} `);
+}
+
 async function getEvent(matchId: string): Promise<ApiEvent> {
   const events = await apiGet<ApiEvent[]>({ action: "get_events", match_id: matchId, timezone: "UTC" });
   if (!Array.isArray(events) || events.length === 0) {
@@ -225,13 +244,10 @@ async function getPlayerPool(matchId: string): Promise<PlayerPool> {
   // roster as a stable player pool so rooms can be created before kickoff.
   if (rows.length === 0) {
     const squads = await getSquadPlayers(leagueId);
-    const targetTeams = new Map([
-      [event.match_hometeam_name.toLowerCase(), event.match_hometeam_name],
-      [event.match_awayteam_name.toLowerCase(), event.match_awayteam_name]
-    ]);
-
     for (const squad of squads) {
-      const teamName = targetTeams.get(squad.team_name.toLowerCase());
+      const teamName = [event.match_hometeam_name, event.match_awayteam_name].find((fixtureName) =>
+        teamNamesMatch(fixtureName, squad.team_name)
+      );
       if (!teamName) continue;
       for (const player of squad.players ?? []) {
         rows.push({
