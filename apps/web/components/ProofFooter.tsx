@@ -13,6 +13,9 @@ export function ProofFooter() {
       <a href={`https://scan.botchain.ai/tx/${receiptHash}`} target="_blank" rel="noreferrer">
         View transaction on BOTScan ↗
       </a>
+      <a href="https://x.com/useProofPlay" target="_blank" rel="noreferrer" className="proof-footer__social">
+        Follow @useProofPlay on X ↗
+      </a>
     </footer>
   );
 }
