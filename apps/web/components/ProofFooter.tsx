@@ -7,11 +7,14 @@ export function ProofFooter() {
       <div className="proof-footer__title">Proof on BOT Mainnet</div>
       <div className="proof-footer__grid">
         <div><span>Chain ID</span><strong>677</strong></div>
-        <div><span>Registry Address</span><code>{registryAddress}</code></div>
-        <div><span>Latest Receipt</span><code>{receiptHash}</code></div>
+        <div><span>Registry Address</span><a href={`https://scan.botchain.ai/address/${registryAddress}`} target="_blank" rel="noreferrer"><code>{registryAddress}</code></a></div>
+        <div><span>Latest Receipt</span><a href={`https://scan.botchain.ai/tx/${receiptHash}`} target="_blank" rel="noreferrer"><code>{receiptHash}</code></a></div>
       </div>
       <a href={`https://scan.botchain.ai/tx/${receiptHash}`} target="_blank" rel="noreferrer">
         View transaction on BOTScan ↗
+      </a>
+      <a href="https://www.botchain.ai/en/" target="_blank" rel="noreferrer">
+        Built on BOT Chain ↗
       </a>
       <a href="https://x.com/useProofPlay" target="_blank" rel="noreferrer" className="proof-footer__social">
         Follow @useProofPlay on X ↗
