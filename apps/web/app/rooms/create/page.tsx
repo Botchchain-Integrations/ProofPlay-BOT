@@ -4,13 +4,14 @@ import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { isAddress, keccak256, parseEther, toBytes, type Address } from "viem";
-import { useAccount, useChainId, usePublicClient, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
+import { useAccount, useChainId, usePublicClient, useWaitForTransactionReceipt, useWalletClient, useWriteContract } from "wagmi";
 import type { Match } from "@proofplay/shared";
 import {
   useContractAddresses,
   hasConfiguredAddress,
   LAST_ROOM_ADDRESS_STORAGE_KEY,
-  matchRoomFactoryAbi
+  matchRoomFactoryAbi,
+  playerRegistryAbi
 } from "@/lib/contracts";
 import { demoMatches } from "@/lib/demo-data";
 
@@ -32,6 +33,7 @@ function CreateRoomForm() {
   const { address, isConnected } = useAccount();
   const searchParams = useSearchParams();
   const publicClient = usePublicClient();
+  const walletClient = useWalletClient();
   const writeContract = useWriteContract();
   const txHash = writeContract.data;
 
@@ -157,6 +159,109 @@ function CreateRoomForm() {
     };
   }, [waitForReceipt.isSuccess, canWriteFactory, publicClient]);
 
+  // Fallback used when the server-side seeding wallet cannot pay (e.g. mainnet
+  // where the deployer is dry). Because addPlayers is open on the PlayerRegistry,
+  // the room creator signs the seeding batches with their own wallet.
+  async function seedWithCreatorWallet(match: Match): Promise<boolean> {
+    if (!address || !publicClient || !walletClient.data) {
+      setSeedError(
+        "The server wallet could not cover seeding and your wallet is not available for the fallback. Fund the room creator wallet or try again later."
+      );
+      return false;
+    }
+
+    setSeedError(null);
+    setSeedMessage("Preparing to seed with your wallet...");
+
+    try {
+      const dryRunResponse = await fetch("/api/seed-players", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fixtureId: match.id,
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
+          chainId,
+          dryRun: true
+        })
+      });
+      const dryRunBody = (await dryRunResponse.json()) as {
+        ok?: boolean;
+        error?: { message?: string };
+        data?: {
+          matchId?: `0x${string}`;
+          alreadySeeded?: boolean;
+          inputs?: { id: number; name: string; team: string; position: number }[];
+          chunkSize?: number;
+        };
+      };
+
+      if (!dryRunResponse.ok || !dryRunBody?.ok) {
+        setSeedError(
+          dryRunBody?.error?.message ??
+            "The server wallet could not cover seeding and the fallback plan could not start."
+        );
+        return false;
+      }
+
+      const { matchId: hashedMatchId, alreadySeeded, inputs, chunkSize } = dryRunBody.data ?? {};
+
+      if (alreadySeeded || !inputs?.length) {
+        if (alreadySeeded) {
+          setSeedMessage("Player pool already on-chain.");
+          return true;
+        }
+        setSeedError("This match has no player pool available right now. Try again later.");
+        return false;
+      }
+
+      if (!hashedMatchId) {
+        setSeedError("Could not resolve this match on-chain. Try again later.");
+        return false;
+      }
+
+      const size = chunkSize ?? 8;
+      const batches = Math.ceil(inputs.length / size);
+
+      for (let index = 0; index < inputs.length; index += size) {
+        const batch = Math.floor(index / size) + 1;
+        const chunk = inputs
+          .slice(index, index + size)
+          .map(({ id, name, team, position }) => ({ id: BigInt(id), name, team, position }));
+
+        setSeedMessage(`Seeding with your wallet - check your wallet to confirm batch ${batch} of ${batches}...`);
+
+        try {
+          const hash = await walletClient.data.writeContract({
+            abi: playerRegistryAbi,
+            address: contractAddresses.registry,
+            functionName: "addPlayers",
+            args: [hashedMatchId, chunk],
+            account: address
+          });
+          const receipt = await publicClient.waitForTransactionReceipt({ hash });
+
+          if (receipt.status !== "success") {
+            throw new Error("Seeding transaction reverted on-chain.");
+          }
+        } catch (error) {
+          setSeedError(
+            error instanceof Error
+              ? `Wallet-funded seeding failed on batch ${batch} of ${batches}: ${error.message}`
+              : "Wallet-funded seeding failed."
+          );
+          return false;
+        }
+      }
+
+      setSeedMessage(`Seeded ${inputs.length} players on-chain with your wallet.`);
+      return true;
+    } catch (error) {
+      setSeedError(error instanceof Error ? error.message : "Could not seed with your wallet.");
+      return false;
+    }
+  }
+
   async function handleCreateRoom() {
     setFormError(null);
     setSeedError(null);
@@ -201,23 +306,31 @@ function CreateRoomForm() {
       });
       const seedBody = (await seedResponse.json()) as {
         ok?: boolean;
-        error?: { message?: string };
+        error?: { code?: string; message?: string };
         data?: { alreadySeeded?: boolean; playerCount?: number };
       };
 
       if (!seedResponse.ok || !seedBody?.ok) {
-        setSeedError(
-          seedBody?.error?.message ?? "Could not seed the player pool for this match."
+        if (seedBody?.error?.code === "INSUFFICIENT_SEEDING_FUNDS") {
+          const seeded = await seedWithCreatorWallet(selectedMatch);
+          if (!seeded) {
+            setSeeding(false);
+            return;
+          }
+        } else {
+          setSeedError(
+            seedBody?.error?.message ?? "Could not seed the player pool for this match."
+          );
+          setSeeding(false);
+          return;
+        }
+      } else {
+        setSeedMessage(
+          seedBody.data?.alreadySeeded
+            ? `Player pool already on-chain (${seedBody.data.playerCount} players).`
+            : `Seeded ${seedBody.data?.playerCount ?? 0} players on-chain for this match.`
         );
-        setSeeding(false);
-        return;
       }
-
-      setSeedMessage(
-        seedBody.data?.alreadySeeded
-          ? `Player pool already on-chain (${seedBody.data.playerCount} players).`
-          : `Seeded ${seedBody.data?.playerCount ?? 0} players on-chain for this match.`
-      );
     } catch (error) {
       setSeedError(error instanceof Error ? error.message : "Could not seed the player pool for this match.");
       setSeeding(false);

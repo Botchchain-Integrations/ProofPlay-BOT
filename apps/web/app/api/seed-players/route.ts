@@ -8,12 +8,14 @@ export async function POST(request: Request) {
     homeTeam?: unknown;
     awayTeam?: unknown;
     chainId?: unknown;
+    dryRun?: unknown;
   } | null;
 
   const fixtureId = typeof body?.fixtureId === "string" ? body.fixtureId.trim() : "";
   const homeTeam = typeof body?.homeTeam === "string" ? body.homeTeam.trim() : "";
   const awayTeam = typeof body?.awayTeam === "string" ? body.awayTeam.trim() : "";
   const chainId = typeof body?.chainId === "number" ? body.chainId : undefined;
+  const dryRun = body?.dryRun === true;
 
   if (!fixtureId || !homeTeam || !awayTeam) {
     return toRouteErrorResponse(
@@ -22,7 +24,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await ensurePlayersSeeded({ fixtureId, homeTeam, awayTeam, chainId });
+    const result = await ensurePlayersSeeded({ fixtureId, homeTeam, awayTeam, chainId, dryRun });
     return successResponse(result);
   } catch (error) {
     return toRouteErrorResponse(error);

@@ -8,18 +8,23 @@ export const LAST_ROOM_ADDRESS_STORAGE_KEY = "proofplay:last-room-address";
 export const CHAIN_COOKIE = "proofplay_chain";
 
 // Per-network deployed contract addresses. Server default is mainnet.
+// The registries below are the OPEN-seeding PlayerRegistry deploy (addPlayers
+// callable by any wallet so room creators fund seeding with their own gas).
 export const CONTRACT_ADDRESSES: Record<number, { factory: Address; registry: Address }> = {
   [botChain.id]: {
     factory: (process.env.NEXT_PUBLIC_MAINNET_FACTORY_ADDRESS ??
       "0x71601e379643e8dD704991C6dD1FDbD5630C4Ce7") as Address,
+    // NOTE: mainnet registry deployed in a rush with a truncated owner. Open
+    // seeding + reads are fully functional; setPlayerStatus (unused by the UI)
+    // is locked until a correctly-owned registry can be funded (~0.015 BOT).
     registry: (process.env.NEXT_PUBLIC_MAINNET_REGISTRY_ADDRESS ??
-      "0x8e77552B64dE07b39fc12dE6f44CdC0bE42F119c") as Address
+      "0x0C70fb68D234E116859e85B2B38346b3064CaB9F") as Address
   },
   [botTestnet.id]: {
     factory: (process.env.NEXT_PUBLIC_TESTNET_FACTORY_ADDRESS ??
       "0xf6920D45d16c5FAa9eB40753Bb3F16D353355705") as Address,
     registry: (process.env.NEXT_PUBLIC_TESTNET_REGISTRY_ADDRESS ??
-      "0xE554b684AC83486A1d6f8020D9b92a5181DcdD64") as Address
+      "0xfEbCDDA771561Bc92D290C993e07Aa8552083A61") as Address
   }
 };
 
@@ -205,6 +210,25 @@ export const fantasyMatchRoomAbi = [
 ] as const;
 
 export const playerRegistryAbi = [
+  {
+    type: "function",
+    stateMutability: "nonpayable",
+    name: "addPlayers",
+    inputs: [
+      { name: "matchId", type: "bytes32" },
+      {
+        name: "inputs",
+        type: "tuple[]",
+        components: [
+          { name: "id", type: "uint256" },
+          { name: "name", type: "string" },
+          { name: "team", type: "string" },
+          { name: "position", type: "uint8" }
+        ]
+      }
+    ],
+    outputs: []
+  },
   {
     type: "function",
     stateMutability: "view",

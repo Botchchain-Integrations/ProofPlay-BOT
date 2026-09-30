@@ -14,6 +14,8 @@ coverage
 .env
 .env.local
 .env.*.local
+.env.pull.*
+.env.txlocal
 
 # Logs
 npm-debug.log*

@@ -51,6 +51,11 @@ export type SeedPlayersResult = {
   matchId: `0x${string}`;
   alreadySeeded: boolean;
   playerCount: number;
+  existingCount?: number;
+  chunkSize?: number;
+  /** Only present in dryRun mode: the players still missing on-chain, ready
+   *  for the caller (a room creator's wallet) to sign addPlayers batches. */
+  inputs?: { id: number; name: string; team: string; position: number }[];
   txHash?: `0x${string}`;
 };
 
@@ -73,11 +78,16 @@ function deriveMatchId(fixtureId: string, homeTeam: string, awayTeam: string): `
 // Ensures a match has a player pool on-chain. If players already exist for the
 // derived matchId, returns `alreadySeeded: true` without spending gas. Otherwise
 // fetches the real starting XIs from the football provider and seeds them.
+//
+// dryRun mode never writes: it returns the players still missing on-chain so
+// the caller (a room creator wallet) can fund the addPlayers batches itself.
+// This is the mainnet path, where the open PlayerRegistry lets any wallet seed.
 export async function ensurePlayersSeeded(input: {
   fixtureId: string;
   homeTeam: string;
   awayTeam: string;
   chainId?: number;
+  dryRun?: boolean;
 }): Promise<SeedPlayersResult> {
   const chain = resolveChain(input.chainId);
   const registry = getContractAddresses(chain.id).registry;
@@ -154,7 +164,23 @@ export async function ensurePlayersSeeded(input: {
   const missing = inputs.filter((input) => !existingIds.has(input.id));
 
   if (missing.length === 0) {
-    return { matchId, alreadySeeded: true, playerCount: inputs.length };
+    return { matchId, alreadySeeded: true, playerCount: inputs.length, existingCount: existing.length };
+  }
+
+  const chunkSize = Number(process.env.PLAYER_SEED_CHUNK_SIZE ?? 8);
+
+  // dryRun: hand the missing players back to the caller (a room creator's
+  // wallet) so it can fund the addPlayers batches itself. Used when the
+  // server-side seeding wallet cannot pay (e.g. mainnet).
+  if (input.dryRun) {
+    return {
+      matchId,
+      alreadySeeded: false,
+      playerCount: inputs.length,
+      existingCount: existing.length,
+      chunkSize,
+      inputs: missing.map(({ id, name, team, position }) => ({ id: Number(id), name, team, position }))
+    };
   }
 
   // The RPC node rejects single transactions whose estimated gas exceeds its
@@ -162,12 +188,12 @@ export async function ensurePlayersSeeded(input: {
   // needs ~7M gas, so the write is chunked into batches that stay well under
   // the allowance. addPlayers is idempotent per player id, so partial runs
   // merge cleanly on retry.
-  const chunkSize = Number(process.env.PLAYER_SEED_CHUNK_SIZE ?? 8);
   const chunks = Math.ceil(missing.length / chunkSize);
 
   // Fail fast with a clear message (instead of a cryptic 500 part-way through)
-  // when the seeding wallet cannot afford the whole pool. This wallet is the
-  // registry owner, so no other account can seed the players.
+  // when the server-side seeding wallet cannot afford the whole pool. When this
+  // happens the create flow falls back to creator-funded seeding (dryRun plus
+  // client-signed addPlayers batches against the open registry).
   const [balance, gasPrice] = await Promise.all([
     publicClient.getBalance({ address: account.address }).catch(() => null),
     publicClient.getGasPrice().catch(() => null)
