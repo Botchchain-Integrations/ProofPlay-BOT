@@ -84,16 +84,20 @@ export async function ensurePlayersSeeded(input: {
     transport: http(chain.rpcUrls.default.http[0])
   });
 
-  const existing = (await publicClient.readContract({
-    abi: playerRegistryAbi,
-    address: registry,
-    functionName: "getMatchPlayerIds",
-    args: [matchId]
-  })) as bigint[];
-
-  if (existing.length > 0) {
-    return { matchId, alreadySeeded: true, playerCount: existing.length };
+  let existing: bigint[];
+  try {
+    existing = (await publicClient.readContract({
+      abi: playerRegistryAbi,
+      address: registry,
+      functionName: "getMatchPlayerIds",
+      args: [matchId]
+    })) as bigint[];
+  } catch (error) {
+    console.error("[seed-players] readContract(getMatchPlayerIds) failed", error);
+    throw error;
   }
+
+  const existingIds = new Set(existing.map((id) => id));
 
   const provider = createFootballProvider();
   if (!provider) {
@@ -128,18 +132,70 @@ export async function ensurePlayersSeeded(input: {
     position: POSITION_ENUM[player.position]
   }));
 
-  const txHash = await walletClient.writeContract({
-    abi: playerRegistryAbi,
-    address: registry,
-    functionName: "addPlayers",
-    args: [matchId, inputs]
-  });
+  // Only the players missing on-chain. Keeps retries self-healing when a prior
+  // run was interrupted after a partial seed.
+  const missing = inputs.filter((input) => !existingIds.has(input.id));
 
-  const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-  if (receipt.status !== "success") {
-    throw new HttpError(502, "PLAYER_SEED_TX_FAILED", "The player seeding transaction was reverted.");
+  if (missing.length === 0) {
+    return { matchId, alreadySeeded: true, playerCount: inputs.length };
   }
 
-  return { matchId, alreadySeeded: false, playerCount: players.length, txHash };
+  // The RPC node rejects single transactions whose estimated gas exceeds its
+  // call allowance (~2M gas). Seeding a full national-squad pool (56 players)
+  // needs ~7M gas, so the write is chunked into batches that stay well under
+  // the allowance. addPlayers is idempotent per player id, so partial runs
+  // merge cleanly on retry.
+  const chunkSize = Number(process.env.PLAYER_SEED_CHUNK_SIZE ?? 8);
+  let lastTxHash: `0x${string}` | undefined;
+  let nonce: number | null = null;
+
+  for (let start = 0; start < missing.length; start += chunkSize) {
+    // Fetch a fresh nonce per chunk. bohr's RPC shards can report a lagging
+    // pending count, so the internal viem nonce manager drifts and chunk 4+
+    // die with "nonce too low". Since we await each receipt, "latest" is exact.
+    if (nonce === null) {
+      nonce = await publicClient.getTransactionCount({ address: account.address, blockTag: "latest" }).catch(() => null);
+    } else {
+      nonce = nonce + 1;
+    }
+
+    const chunk = missing.slice(start, start + chunkSize);
+    const txHash = await walletClient.writeContract({
+      abi: playerRegistryAbi,
+      address: registry,
+      functionName: "addPlayers",
+      args: [matchId, chunk],
+      ...(nonce !== null ? { nonce: Number(nonce) } : {})
+    }).catch(async (error) => {
+      const nonceDrift =
+        error instanceof Error && /nonce too low|nonce provided for the transaction is incorrect/i.test(error.message);
+
+      if (nonceDrift) {
+        const freshNonce = await publicClient.getTransactionCount({ address: account.address, blockTag: "latest" });
+        return walletClient.writeContract({
+          abi: playerRegistryAbi,
+          address: registry,
+          functionName: "addPlayers",
+          args: [matchId, chunk],
+          nonce: Number(freshNonce)
+        });
+      }
+
+      console.error(`[seed-players] writeContract(addPlayers) chunk ${start / chunkSize + 1} failed`, error);
+      throw error;
+    });
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash }).catch((error) => {
+      console.error("[seed-players] waitForTransactionReceipt failed", error);
+      throw error;
+    });
+
+    if (receipt.status !== "success") {
+      throw new HttpError(502, "PLAYER_SEED_TX_FAILED", "The player seeding transaction was reverted.");
+    }
+
+    lastTxHash = txHash;
+  }
+
+  return { matchId, alreadySeeded: false, playerCount: inputs.length, txHash: lastTxHash };
 }

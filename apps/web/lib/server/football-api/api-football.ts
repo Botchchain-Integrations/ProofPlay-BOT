@@ -327,7 +327,20 @@ interface PlayerPool {
 // Both getMatchPlayers and getMatchStats go through here so that the fantasy
 // pool order (and therefore the on-chain player ids) is always identical.
 // Pool = both starting XIs in lineup order; stats are attached by player_key.
+
+// Per-fixture pool cache. Building a pool costs up to 4 APIfootball calls
+// (get_events + get_statistics ± get_teams). Rapid create-room clicks across
+// several fixtures exhaust the free hourly quota and surface as 502 rate-limit
+// errors, so cache each built pool so repeated and duplicate requests reuse it.
+const poolCache = new Map<string, { at: number; pool: PlayerPool }>();
+const POOL_TTL_MS = 60 * 60 * 1000;
+
 async function getPlayerPool(matchId: string): Promise<PlayerPool> {
+  const cached = poolCache.get(matchId);
+  if (cached && Date.now() - cached.at < POOL_TTL_MS) {
+    return cached.pool;
+  }
+
   const event = await getEvent(matchId);
 
   const lineup: ApiLineup | undefined = event.lineup;
@@ -385,7 +398,7 @@ async function getPlayerPool(matchId: string): Promise<PlayerPool> {
     });
   });
 
-  return {
+  const pool: PlayerPool = {
     players,
     playerKeys,
     homeTeamName: event.match_hometeam_name,
@@ -393,6 +406,9 @@ async function getPlayerPool(matchId: string): Promise<PlayerPool> {
     homeConceded: toInt(event.match_awayteam_score),
     awayConceded: toInt(event.match_hometeam_score)
   };
+
+  poolCache.set(matchId, { at: Date.now(), pool });
+  return pool;
 }
 
 // ---------------------------------------------------------------------------
