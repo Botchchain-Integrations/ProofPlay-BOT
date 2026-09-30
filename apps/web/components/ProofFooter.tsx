@@ -1,18 +1,24 @@
-const registryAddress = "0x8e77552B64dE07b39fc12dE6f44CdC0bE42F119c";
-const receiptHash = "0x64c8b49033d6d04b894f56906e5ccb6beca1cf9cbd06099f45abe18f3e607b26";
+"use client";
+
+import { useChainId } from "wagmi";
+import { botChain, botTestnet } from "@/lib/chains";
+import { getContractAddresses } from "@/lib/contracts";
 
 export function ProofFooter() {
+  const chainId = useChainId();
+  const activeChainId = chainId === botTestnet.id ? botTestnet.id : botChain.id;
+  const activeChain = activeChainId === botTestnet.id ? botTestnet : botChain;
+  const { factory, registry } = getContractAddresses(activeChainId);
+  const explorer = activeChain.blockExplorers.default.url;
+
   return (
     <footer className="proof-footer">
-      <div className="proof-footer__title">Proof on BOT Mainnet</div>
+      <div className="proof-footer__title">Proof on {activeChain.name}</div>
       <div className="proof-footer__grid">
-        <div><span>Chain ID</span><strong>677</strong></div>
-        <div><span>Registry Address</span><a href={`https://scan.botchain.ai/address/${registryAddress}`} target="_blank" rel="noreferrer"><code>{registryAddress}</code></a></div>
-        <div><span>Latest Receipt</span><a href={`https://scan.botchain.ai/tx/${receiptHash}`} target="_blank" rel="noreferrer"><code>{receiptHash}</code></a></div>
+        <div><span>Chain ID</span><strong>{activeChainId}</strong></div>
+        <div><span>Factory Address</span><a href={`${explorer}/address/${factory}`} target="_blank" rel="noreferrer"><code>{factory}</code></a></div>
+        <div><span>Registry Address</span><a href={`${explorer}/address/${registry}`} target="_blank" rel="noreferrer"><code>{registry}</code></a></div>
       </div>
-      <a href={`https://scan.botchain.ai/tx/${receiptHash}`} target="_blank" rel="noreferrer">
-        View transaction on BOTScan ↗
-      </a>
       <a href="https://www.botchain.ai/en/" target="_blank" rel="noreferrer">
         Built on BOT Chain ↗
       </a>
