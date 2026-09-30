@@ -18,6 +18,17 @@ The active PlayerRegistry has an **open** `addPlayers` so room creators can seed
 player pools with their own wallet (the server falls back to creator-funded
 seeding when the deployer wallet is dry, see `apps/web/app/rooms/create/page.tsx`).
 
+## Mainnet (chain 677)
+
+| Contract | Address |
+|---|---|
+| PlayerRegistry | `0xFb7fC70271B672af11F7C08e5584cB87c1cABa5c` |
+| MatchRoomFactory | `0x71601e379643e8dD704991C6dD1FDbD5630C4Ce7` |
+
+PlayerRegistry is owned by the deployer and, like the testnet one, accepts
+`addPlayers` from any wallet. Earlier registry deploys are superseded: their
+player pools are not migrated, so pools seed on demand for new fixtures.
+
 ## Environment Setup
 
 **apps/web/.env.local** (gitignored):

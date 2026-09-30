@@ -14,11 +14,10 @@ export const CONTRACT_ADDRESSES: Record<number, { factory: Address; registry: Ad
   [botChain.id]: {
     factory: (process.env.NEXT_PUBLIC_MAINNET_FACTORY_ADDRESS ??
       "0x71601e379643e8dD704991C6dD1FDbD5630C4Ce7") as Address,
-    // NOTE: mainnet registry deployed in a rush with a truncated owner. Open
-    // seeding + reads are fully functional; setPlayerStatus (unused by the UI)
-    // is locked until a correctly-owned registry can be funded (~0.015 BOT).
+    // Open-seeding registry, owned by the deployer, so setPlayerStatus
+    // (owner-only, not called by the UI) remains admin-able.
     registry: (process.env.NEXT_PUBLIC_MAINNET_REGISTRY_ADDRESS ??
-      "0x0C70fb68D234E116859e85B2B38346b3064CaB9F") as Address
+      "0xFb7fC70271B672af11F7C08e5584cB87c1cABa5c") as Address
   },
   [botTestnet.id]: {
     factory: (process.env.NEXT_PUBLIC_TESTNET_FACTORY_ADDRESS ??
