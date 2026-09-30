@@ -9,10 +9,14 @@ Chain: **BOT Chain Testnet**, chain ID **968**.
 
 | Contract | Address |
 |---|---|
-| PlayerRegistry | `0xE554b684AC83486A1d6f8020D9b92a5181DcdD64` |
+| PlayerRegistry | `0xfEbCDDA771561Bc92D290C993e07Aa8552083A61` |
 | MatchRoomFactory | `0xf6920D45d16c5FAa9eB40753Bb3F16D353355705` |
 
 Both owned by the deployer: `0x3F5b96A494061F7338Da529e3047809Ac6a7FB84`.
+
+The active PlayerRegistry has an **open** `addPlayers` so room creators can seed
+player pools with their own wallet (the server falls back to creator-funded
+seeding when the deployer wallet is dry, see `apps/web/app/rooms/create/page.tsx`).
 
 ## Environment Setup
 

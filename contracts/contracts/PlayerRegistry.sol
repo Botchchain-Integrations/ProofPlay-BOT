@@ -35,7 +35,15 @@ contract PlayerRegistry is Ownable {
 
     constructor(address initialOwner) Ownable(initialOwner) {}
 
-    function addPlayers(bytes32 matchId, PlayerInput[] calldata inputs) external onlyOwner {
+    // Open seeding: any wallet can register a real starting-XI pool for a
+    // fixture (football data is public), which lets each room creator fund the
+    // addPlayers gas with their own wallet instead of a shared deployer.
+    // Duplicate player ids are rejected per match, so re-seeding a partially
+    // seeded pool fails cleanly and the caller retries with only the missing
+    // ids. Pool integrity is NOT a trust boundary here: setPlayerStatus (the
+    // function that determines whether a registered player counts) stays
+    // owner-only, so a garbage pool cannot influence scoring.
+    function addPlayers(bytes32 matchId, PlayerInput[] calldata inputs) external {
         require(inputs.length > 0, "No players provided");
 
         for (uint256 i = 0; i < inputs.length; i++) {
