@@ -47,7 +47,8 @@ export async function listMatches() {
         return matches as Match[];
       }
       // fall through if the live provider returned no fixtures
-    } catch {
+    } catch (error) {
+      console.error("[matches.service] live provider failed, falling back to demo:", error);
       // fall back to demo fixtures on provider failure so the UI stays usable
     }
   }

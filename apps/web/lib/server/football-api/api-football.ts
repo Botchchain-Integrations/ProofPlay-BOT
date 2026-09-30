@@ -7,9 +7,15 @@ import type {
 } from "./types";
 import { buildMatchKey } from "./types";
 
-// APIfootball (apifootball.com) v3 via RapidAPI.
-// Base: https://apiv3.apifootball.com/?action=...
-// Requires FOOTBALL_API_KEY (server-side RapidAPI key, `x-rapidapi-key`).
+// APIfootball v3. FOOTBALL_API_KEY is a server-side key.
+//
+// The provider is host-agnostic so the same key works on either endpoint:
+//   1. RapidAPI: https://apifootball3.p.rapidapi.com/?action=...
+//      key sent via the `x-rapidapi-key` / `x-rapidapi-host` headers.
+//   2. Direct APIfootball: https://apiv3.apifootball.com/?action=...
+//      key sent via the `APIkey` query parameter.
+// Each call tries RapidAPI first and falls back to the direct host, so a key
+// issued on either platform works without configuration changes.
 //
 // Free Basic plan (1,000 req/day, ~100/hr) covers the current season including
 // line-ups, goal scorers and per-player match statistics - unlike the
@@ -17,8 +23,9 @@ import { buildMatchKey } from "./types";
 //
 // League ids: Premier League = 152, La Liga = 302.
 
-const API_BASE = "https://apiv3.apifootball.com";
-const API_HOST = "apiv3.apifootball.com";
+const RAPID_BASE = "https://apifootball3.p.rapidapi.com/";
+const RAPID_HOST = "apifootball3.p.rapidapi.com";
+const DIRECT_BASE = "https://apiv3.apifootball.com/";
 
 export const COMPETITIONS = [
   { id: "152", name: "Premier League" },
@@ -33,21 +40,40 @@ function apiKey() {
   return key;
 }
 
-async function apiGet<T>(params: Record<string, string>): Promise<T> {
-  const url = new URL(API_BASE);
-  for (const [key, value] of Object.entries(params)) {
-    url.searchParams.set(key, value);
+async function apiGetOnce<T>(params: Record<string, string>): Promise<T> {
+  const key = apiKey();
+  const url = new URL(RAPID_BASE);
+  for (const [param, value] of Object.entries(params)) {
+    url.searchParams.set(param, value);
   }
 
   const response = await fetch(url.toString(), {
     headers: {
-      "x-rapidapi-key": apiKey(),
-      "x-rapidapi-host": API_HOST
+      "x-rapidapi-key": key,
+      "x-rapidapi-host": RAPID_HOST
     },
     // APIfootball has no server-side cache header; be gentle with the free quota.
     cache: "no-store"
   });
 
+  return parseApiResponse<T>(response);
+}
+
+async function apiGetDirect<T>(params: Record<string, string>): Promise<T> {
+  const url = new URL(DIRECT_BASE);
+  for (const [param, value] of Object.entries(params)) {
+    url.searchParams.set(param, value);
+  }
+  url.searchParams.set("APIkey", apiKey());
+
+  const response = await fetch(url.toString(), {
+    cache: "no-store"
+  });
+
+  return parseApiResponse<T>(response);
+}
+
+async function parseApiResponse<T>(response: Response): Promise<T> {
   if (response.status === 401 || response.status === 403) {
     throw new HttpError(401, "FOOTBALL_API_AUTH_FAILED", "Football API authentication failed. Check FOOTBALL_API_KEY.");
   }
@@ -63,6 +89,21 @@ async function apiGet<T>(params: Record<string, string>): Promise<T> {
     throw new HttpError(502, "FOOTBALL_API_ERROR", `Football API error: ${body.message ?? body.error}`);
   }
   return body as T;
+}
+
+async function apiGet<T>(params: Record<string, string>): Promise<T> {
+  let rapidError: unknown;
+  try {
+    return await apiGetOnce<T>(params);
+  } catch (error) {
+    rapidError = error;
+  }
+  try {
+    return await apiGetDirect<T>(params);
+  } catch {
+    // both hosts failed: surface the RapidAPI failure, which is the primary path
+    throw rapidError;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -119,6 +160,68 @@ interface ApiTeamPlayer {
 interface ApiTeam {
   team_name: string;
   players?: ApiTeamPlayer[];
+}
+
+interface ApiLeague {
+  country_id: string;
+  country_name: string;
+  league_id: string;
+  league_name: string;
+  league_season?: string;
+  league_logo?: string;
+  country_logo?: string;
+}
+
+// ---------------------------------------------------------------------------
+// League discovery
+// ---------------------------------------------------------------------------
+
+// The APIfootball free/basic plans only cover a subset of leagues. `get_leagues`
+// returns the competitions included in the current subscription, so fixtures are
+// requested from what the plan actually covers instead of hardcoded ids that
+// return "No event found (please check your plan)!". Cached briefly to keep the
+// get_events quota usage low.
+const coveredLeaguesCache: { at: number; leagues: ApiLeague[] } = { at: 0, leagues: [] };
+const COVERED_LEAGUES_TTL_MS = 15 * 60 * 1000;
+
+async function getCoveredLeagues(): Promise<ApiLeague[]> {
+  if (coveredLeaguesCache.leagues.length > 0 && Date.now() - coveredLeaguesCache.at < COVERED_LEAGUES_TTL_MS) {
+    return coveredLeaguesCache.leagues;
+  }
+
+  const body = await apiGet<ApiLeague[]>({ action: "get_leagues" });
+  const seen = new Set<string>();
+  const leagues: ApiLeague[] = [];
+  for (const league of Array.isArray(body) ? body : []) {
+    if (league?.league_id && !seen.has(league.league_id)) {
+      seen.add(league.league_id);
+      leagues.push(league);
+    }
+  }
+
+  coveredLeaguesCache.at = Date.now();
+  coveredLeaguesCache.leagues = leagues;
+  return leagues;
+}
+
+const PREFERRED_LEAGUE_PATTERN =
+  /premier league|la liga|primera divis|serie a|bundesliga|ligue 1|eredivisie/i;
+
+function pickFixturesLeagues(covered: ApiLeague[]): ApiLeague[] {
+  const exactIds = new Set<string>(COMPETITIONS.map((competition) => competition.id));
+  const picked = covered.filter((league) => exactIds.has(league.league_id));
+  if (picked.length > 0) {
+    return picked;
+  }
+
+  // Preferred ids are not in this plan: fall back to any top-flight competition
+  // the plan covers so the feed still returns real fixtures.
+  const named = covered.filter((league) => PREFERRED_LEAGUE_PATTERN.test(league.league_name));
+  if (named.length > 0) {
+    return named.slice(0, COMPETITIONS.length);
+  }
+
+  return covered.slice(0, COMPETITIONS.length);
 }
 
 // ---------------------------------------------------------------------------
@@ -296,8 +399,17 @@ async function getPlayerPool(matchId: string): Promise<PlayerPool> {
 // Provider
 // ---------------------------------------------------------------------------
 
+// Module-cached fixture list. The free plan has a strict hourly quota, so the
+// feed is recomputed at most once per TTL instead of on every page request.
+const listMatchesCache: { at: number; matches: FootballMatch[] } = { at: 0, matches: [] };
+const LIST_MATCHES_TTL_MS = 15 * 60 * 1000;
+
 export class ApiFootballProvider implements FootballDataProvider {
   async listMatches(): Promise<FootballMatch[]> {
+    if (listMatchesCache.matches.length > 0 && Date.now() - listMatchesCache.at < LIST_MATCHES_TTL_MS) {
+      return listMatchesCache.matches;
+    }
+
     const now = new Date();
     const from = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
     const to = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -306,17 +418,8 @@ export class ApiFootballProvider implements FootballDataProvider {
 
     const results: FootballMatch[] = [];
 
-    for (const competition of COMPETITIONS) {
-      const events = await apiGet<ApiEvent[]>({
-        action: "get_events",
-        league_id: competition.id,
-        from: fromStr,
-        to: toStr,
-        timezone: "UTC"
-      });
-
-      if (!Array.isArray(events)) continue;
-
+    const pushEvents = (events: ApiEvent[], fallbackName?: string) => {
+      if (!Array.isArray(events)) return;
       for (const event of events) {
         const homeTeam = event.match_hometeam_name;
         const awayTeam = event.match_awayteam_name;
@@ -329,13 +432,55 @@ export class ApiFootballProvider implements FootballDataProvider {
           awayTeam,
           kickoffTime: `${event.match_date}T${event.match_time}:00Z`,
           status: fixtureStatusToProof(event.match_status),
-          competition: event.league_name || competition.name,
+          competition: event.league_name || fallbackName || "",
           season: event.league_year ?? ""
         });
+      }
+    };
+
+    // Preferred path: fetch every covered league's events in one windowed call.
+    // Some plans only return a limited league set without a league_id filter,
+    // so treat this as best-effort.
+    try {
+      pushEvents(await apiGet<ApiEvent[]>({ action: "get_events", from: fromStr, to: toStr, timezone: "UTC" }));
+    } catch (error) {
+      console.error("[football] broad get_events failed:", error instanceof Error ? error.message : error);
+    }
+
+    // If the broad call produced nothing, scan plan-covered leagues individually
+    // and stop at the first league that yields fixtures.
+    if (results.length === 0) {
+      const coveredLeagues = await getCoveredLeagues();
+      const fixturesLeagues = pickFixturesLeagues(coveredLeagues);
+      console.error(
+        `[football] covered=${coveredLeagues.length} candidates=${fixturesLeagues
+          .map((league) => `${league.league_id}:${league.league_name}`)
+          .join(",")}`
+      );
+
+      for (const league of fixturesLeagues.slice(0, 12)) {
+        try {
+          const events = await apiGet<ApiEvent[]>({
+            action: "get_events",
+            league_id: league.league_id,
+            from: fromStr,
+            to: toStr,
+            timezone: "UTC"
+          });
+          pushEvents(events, league.league_name);
+          if (results.length > 0) break;
+        } catch (error) {
+          console.error(
+            `[football] get_events failed for ${league.league_id}:${league.league_name}:`,
+            error instanceof Error ? error.message : error
+          );
+        }
       }
     }
 
     results.sort((a, b) => a.kickoffTime.localeCompare(b.kickoffTime));
+    listMatchesCache.at = Date.now();
+    listMatchesCache.matches = results;
     return results;
   }
 
