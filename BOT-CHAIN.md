@@ -9,7 +9,7 @@ Chain: **BOT Chain Testnet**, chain ID **968**.
 
 | Contract | Address |
 |---|---|
-| PlayerRegistry | `0xfEbCDDA771561Bc92D290C993e07Aa8552083A61` |
+| PlayerRegistry | `0xfEbCdDA771561Bc92D290C993e07Aa8552083A61` |
 | MatchRoomFactory | `0xf6920D45d16c5FAa9eB40753Bb3F16D353355705` |
 
 Both owned by the deployer: `0x3F5b96A494061F7338Da529e3047809Ac6a7FB84`.

@@ -24,7 +24,7 @@ export const CONTRACT_ADDRESSES: Record<number, { factory: Address; registry: Ad
     factory: (process.env.NEXT_PUBLIC_TESTNET_FACTORY_ADDRESS ??
       "0xf6920D45d16c5FAa9eB40753Bb3F16D353355705") as Address,
     registry: (process.env.NEXT_PUBLIC_TESTNET_REGISTRY_ADDRESS ??
-      "0xfEbCDDA771561Bc92D290C993e07Aa8552083A61") as Address
+      "0xfEbCdDA771561Bc92D290C993e07Aa8552083A61") as Address
   }
 };
 
