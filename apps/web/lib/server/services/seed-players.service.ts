@@ -113,6 +113,18 @@ export async function ensurePlayersSeeded(input: {
   try {
     players = await provider.getMatchPlayers(input.fixtureId);
   } catch (error) {
+    // If a pool is already on-chain, keep the create flow usable when the
+    // provider quota is exhausted (e.g. a cold instance with an expired warm
+    // pool cache). Roster parity cannot be verified during the outage, so
+    // playerCount reflects what is actually on-chain.
+    if (existing.length > 0) {
+      console.warn(
+        `[seed-players] provider fetch failed but ${existing.length} players are already on-chain; treating as seeded`,
+        error
+      );
+      return { matchId, alreadySeeded: true, playerCount: existing.length };
+    }
+
     throw new HttpError(
       502,
       "PLAYER_POOL_FETCH_FAILED",
