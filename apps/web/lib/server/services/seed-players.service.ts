@@ -13,6 +13,11 @@ import { createFootballProvider } from "../football-api";
 const POSITION_ENUM: Record<PlayerPosition, number> = { GK: 0, DEF: 1, MID: 2, FWD: 3 };
 const CHAINS: Record<number, Chain> = { [botChain.id]: botChain, [botTestnet.id]: botTestnet };
 
+function formatBot(wei: bigint): string {
+  const value = Number(wei) / 1e18;
+  return value >= 100 ? value.toFixed(0) : value.toFixed(4);
+}
+
 export const playerRegistryAbi = [
   {
     type: "function",
@@ -146,6 +151,47 @@ export async function ensurePlayersSeeded(input: {
   // the allowance. addPlayers is idempotent per player id, so partial runs
   // merge cleanly on retry.
   const chunkSize = Number(process.env.PLAYER_SEED_CHUNK_SIZE ?? 8);
+  const chunks = Math.ceil(missing.length / chunkSize);
+
+  // Fail fast with a clear message (instead of a cryptic 500 part-way through)
+  // when the seeding wallet cannot afford the whole pool. This wallet is the
+  // registry owner, so no other account can seed the players.
+  const [balance, gasPrice] = await Promise.all([
+    publicClient.getBalance({ address: account.address }).catch(() => null),
+    publicClient.getGasPrice().catch(() => null)
+  ]);
+
+  let seedCostWei: bigint | null = null;
+  if (balance !== null && gasPrice !== null) {
+    const chunkGas = await publicClient
+      .estimateContractGas({
+        abi: playerRegistryAbi,
+        address: registry,
+        functionName: "addPlayers",
+        args: [matchId, missing.slice(0, chunkSize)],
+        account: account.address
+      })
+      .catch(() => null);
+
+    // Every chunk costs roughly the same; add a 25% buffer for price variance.
+    if (chunkGas !== null) {
+      seedCostWei = (chunkGas * gasPrice * BigInt(chunks) * BigInt(25)) / BigInt(20);
+    }
+  }
+
+  if (balance !== null && seedCostWei !== null && balance < seedCostWei) {
+    throw new HttpError(
+      402,
+      "INSUFFICIENT_SEEDING_FUNDS",
+      `Cannot seed the ${chain.name} player pool: the seeding wallet (${account.address}) holds ${formatBot(
+        balance
+      )} BOT but seeding ${chunks} batch(es) needs about ${formatBot(
+        seedCostWei
+      )} BOT. Fund that address (mainnet: bridge.botchain.ai / official BOT DEX; testnet: faucet.botchain.ai) and try again.`,
+      { chainId: chain.id, wallet: account.address, balance: balance.toString(), required: seedCostWei.toString() }
+    );
+  }
+
   let lastTxHash: `0x${string}` | undefined;
   let nonce: number | null = null;
 
@@ -179,6 +225,22 @@ export async function ensurePlayersSeeded(input: {
           args: [matchId, chunk],
           nonce: Number(freshNonce)
         });
+      }
+
+      const insufficientFunds =
+        error instanceof Error &&
+        /insufficient funds|insufficient balance|enough funds|sender.*balance/i.test(error.message);
+
+      if (insufficientFunds) {
+        const liveBalance = await publicClient.getBalance({ address: account.address }).catch(() => null);
+        throw new HttpError(
+          402,
+          "INSUFFICIENT_SEEDING_FUNDS",
+          `The ${chain.name} seeding wallet (${account.address}) ran out of BOT: ${
+            liveBalance === null ? "balance unknown" : `balance is ${formatBot(liveBalance)} BOT`
+          }. Fund it (mainnet: bridge.botchain.ai / official BOT DEX; testnet: faucet.botchain.ai) and retry - seeding is self-healing and continues from where it stopped.`,
+          { chainId: chain.id, wallet: account.address, balance: liveBalance?.toString() }
+        );
       }
 
       console.error(`[seed-players] writeContract(addPlayers) chunk ${start / chunkSize + 1} failed`, error);
