@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Player } from "@proofplay/shared";
 import { formatEther, isAddress, parseEther, type Address } from "viem";
@@ -58,8 +59,6 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
   const submitReceipt = useWaitForTransactionReceipt({ hash: submitMutation.data });
   const lockMutation = useWriteContract();
   const lockReceipt = useWaitForTransactionReceipt({ hash: lockMutation.data });
-  const requestSettlementMutation = useWriteContract();
-  const requestSettlementReceipt = useWaitForTransactionReceipt({ hash: requestSettlementMutation.data });
   const claimMutation = useWriteContract();
   const claimReceipt = useWaitForTransactionReceipt({ hash: claimMutation.data });
 
@@ -202,7 +201,6 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
     !deadlinePassed &&
     userJoined;
   const canLock = isConnected && roomConfigured && !locked && !settled;
-  const canRequestSettlement = isConnected && roomConfigured && locked && !settled;
   const canClaim = isConnected && roomConfigured && settled && !payoutComplete && Boolean(isWinner);
   const joinButtonLabel = joinMutation.isPending
     ? "Joining..."
@@ -227,13 +225,6 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
       ? "Update Lineup"
       : "Submit Lineup";
   const lockButtonLabel = lockMutation.isPending ? "Locking..." : locked ? "Room Locked" : "Lock Room";
-  const requestSettlementButtonLabel = requestSettlementMutation.isPending
-    ? "Requesting..."
-    : settled
-      ? "Already Settled"
-      : locked
-        ? "Request Settlement"
-        : "Lock First";
   const claimButtonLabel = claimMutation.isPending
     ? "Claiming..."
     : payoutComplete
@@ -356,35 +347,6 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
       });
     } catch (error) {
       setFormError(error instanceof Error ? error.message : "Failed to submit lock transaction.");
-    }
-  }
-
-  function handleRequestSettlement() {
-    setFormError(null);
-
-    if (!isConnected) {
-      setFormError("Connect wallet before requesting settlement.");
-      return;
-    }
-
-    if (!roomConfigured) {
-      setFormError("Set a valid room contract address.");
-      return;
-    }
-
-    if (!canRequestSettlement) {
-      setFormError("Settlement can only be requested after room is locked.");
-      return;
-    }
-
-    try {
-      requestSettlementMutation.writeContract({
-        abi: fantasyMatchRoomAbi,
-        address: roomAddress,
-        functionName: "requestSettlement"
-      });
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : "Failed to submit settlement request.");
     }
   }
 
@@ -539,14 +501,9 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
           <button className="btn" type="button" onClick={handleLockRoom} disabled={!canLock}>
             {lockButtonLabel}
           </button>
-          <button
-            className="btn"
-            type="button"
-            onClick={handleRequestSettlement}
-            disabled={!canRequestSettlement}
-          >
-            {requestSettlementButtonLabel}
-          </button>
+          <Link className="btn" href={`/rooms/${roomAddress}/settle`}>
+            Settle with final stats
+          </Link>
           <button
             className={`btn ${canClaim ? "primary" : ""}`}
             type="button"
@@ -563,9 +520,6 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
         {joinMutation.error ? <p className="error-msg">{joinMutation.error.message}</p> : null}
         {submitMutation.error ? <p className="error-msg">{submitMutation.error.message}</p> : null}
         {lockMutation.error ? <p className="error-msg">{lockMutation.error.message}</p> : null}
-        {requestSettlementMutation.error ? (
-          <p className="error-msg">{requestSettlementMutation.error.message}</p>
-        ) : null}
         {claimMutation.error ? <p className="error-msg">{claimMutation.error.message}</p> : null}
         {roomEntryFeeQuery.error ? (
           <p className="error-msg">Failed to read room entry fee: {roomEntryFeeQuery.error.message}</p>
@@ -580,9 +534,6 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
         {joinMutation.data ? <p className="tx-line">Join tx: {joinMutation.data}</p> : null}
         {submitMutation.data ? <p className="tx-line">Lineup tx: {submitMutation.data}</p> : null}
         {lockMutation.data ? <p className="tx-line">Lock tx: {lockMutation.data}</p> : null}
-        {requestSettlementMutation.data ? (
-          <p className="tx-line">Settlement request tx: {requestSettlementMutation.data}</p>
-        ) : null}
         {claimMutation.data ? <p className="tx-line">Claim tx: {claimMutation.data}</p> : null}
 
         {joinReceipt.isLoading ? <p className="tx-line">Waiting on join confirmation...</p> : null}
@@ -591,10 +542,6 @@ export function RoomActions({ entryFee, players, initialRoomAddress }: RoomActio
         {submitReceipt.isSuccess ? <p className="success-msg">Lineup confirmed.</p> : null}
         {lockReceipt.isLoading ? <p className="tx-line">Waiting on lock confirmation...</p> : null}
         {lockReceipt.isSuccess ? <p className="success-msg">Room locked.</p> : null}
-        {requestSettlementReceipt.isLoading ? (
-          <p className="tx-line">Waiting on settlement request confirmation...</p>
-        ) : null}
-        {requestSettlementReceipt.isSuccess ? <p className="success-msg">Settlement requested.</p> : null}
         {claimReceipt.isLoading ? <p className="tx-line">Waiting on claim confirmation...</p> : null}
         {claimReceipt.isSuccess ? <p className="success-msg">Prize claimed.</p> : null}
 
