@@ -342,6 +342,21 @@ export async function settleRoom(input: {
     };
   });
 
+  // The provider returns an all-zero row per player for a match that has not
+  // been played yet. Settling that would record a 0-point winner and pay out the
+  // whole pot to whoever happened to be in the room, so refuse instead.
+  const hasAnyActivity = stats.some(
+    (stat) => stat.goals > 0 || stat.assists > 0 || stat.minutesPlayed > 0 || stat.cleanSheet
+  );
+
+  if (!hasAnyActivity) {
+    throw new HttpError(
+      409,
+      "MATCH_NOT_FINISHED",
+      `Fixture ${input.fixtureId} has no recorded match activity yet (all players report zero goals, assists and minutes). Settling now would award the pot on meaningless stats. Wait until the match is finished.`
+    );
+  }
+
   const walletClient = createWalletClient({ account, chain, transport: http(chain.rpcUrls.default.http[0]) });
 
   // Only the room creator can submit the settlement callback.
@@ -382,7 +397,7 @@ export async function settleRoom(input: {
     )
   );
 
-  const receiptText = `Settled with final stats from ${provider.constructor.name.replace(/ApiFootballProvider/, "apifootball")} for fixture ${input.fixtureId}.`;
+  const receiptText = `Settled with final stats for fixture ${input.fixtureId} from the football data provider.`;
 
   const txHash = await walletClient.writeContract({
     abi: matchRoomAbi,
